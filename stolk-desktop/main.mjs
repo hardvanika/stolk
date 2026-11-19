@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
-import { installGnomeShortcut } from './src/shortcut.mjs';
+import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
 
@@ -121,12 +121,20 @@ async function serverCall(method, route, body) {
   const text = await res.text();
   return { status: res.status, body: text ? JSON.parse(text) : null };
 }
-async function applyShortcut(accel) {
-  if (accel === settings.shortcut && globalShortcut.isRegistered(accel)) return;
+// On Wayland, GNOME never hands global shortcuts to apps (Electron may report the shortcut as registered,
+// but it only fires while Stölk has focus). There the shortcut lives in GNOME's own keyboard settings.
+const isWayland = () => process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
+const shortcutWorks = () => (isWayland() ? !!settings.gnome : globalShortcut.isRegistered(settings.shortcut));
+async function syncGnome(accel) {
+  try { await installGnomeShortcut({ accel, command: gnomeCommand() }); saveSettings({ gnome: true }); return null; }
+  catch (err) { return `No se pudo crear el atajo en GNOME: ${String(err.stderr || err.message || err).trim().split('\n')[0]}`; }
+}
+async function applyShortcut(accel, { force = false } = {}) {
+  if (!force && accel === settings.shortcut && shortcutWorks()) return null;
   saveSettings({ shortcut: accel });
   registerShortcut();
   buildTray();
-  if (settings.gnome) await installGnomeShortcut({ accel, command: gnomeCommand() }).catch(() => {});
+  return isWayland() || settings.gnome ? syncGnome(accel) : null;
 }
 async function loadServerShortcut() {
   try {
@@ -204,24 +212,25 @@ ipcMain.handle('api:call', async (_e, method, route, body) => {
   if (!/^\/[\w\-/?=&%.:,+@]*$/.test(route) || !['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { status: 400, body: { error: { code: 'bad_call', message: 'Llamada no válida' } } };
   return serverCall(method, route, body);
 });
-ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), shortcutActive: globalShortcut.isRegistered(settings.shortcut), wayland: process.env.XDG_SESSION_TYPE === 'wayland' }));
+ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
 ipcMain.handle('settings:set', async (_e, patch) => {
   const accel = typeof patch.shortcut === 'string' ? patch.shortcut.trim() : '';
   if (accel) {
     if (api.baseUrl) {
       const r = await serverCall('PATCH', '/settings', { captureShortcut: accel });
-      if (r.status >= 400) return { ok: false, message: r.body?.error?.message || 'Atajo no válido', shortcutActive: globalShortcut.isRegistered(settings.shortcut) };
+      if (r.status >= 400) return { ok: false, message: r.body?.error?.message || 'Atajo no válido', shortcutActive: shortcutWorks() };
     }
-    await applyShortcut(accel);
+    const error = await applyShortcut(accel, { force: true });
+    if (error) return { ok: false, message: error, shortcutActive: shortcutWorks() };
   }
-  return { ok: true, shortcutActive: globalShortcut.isRegistered(settings.shortcut) };
+  return { ok: true, shortcutActive: shortcutWorks() };
 });
 ipcMain.handle('window:panel', (_e, on) => { setPanel(!!on); return !!on; });
 ipcMain.handle('capture:start', () => startCapture());
 ipcMain.handle('shortcut:gnome', async () => {
-  const binding = await installGnomeShortcut({ accel: settings.shortcut, command: gnomeCommand() });
-  saveSettings({ gnome: true }); // later shortcut changes update this GNOME binding too
-  return { binding };
+  const error = await syncGnome(settings.shortcut); // later shortcut changes update this GNOME binding too
+  if (error) throw new Error(error);
+  return { binding: toGnomeBinding(settings.shortcut) };
 });
 ipcMain.handle('open:external', (_e, url) => openSafe(url));
 

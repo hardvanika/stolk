@@ -800,9 +800,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         <header><h2>Guardar personas desde la pantalla</h2><p class="note">Pulsa el atajo, arrastra un recuadro sobre el perfil, la tarjeta o el chat, y Claude rellena la ficha. Tú la revisas antes de guardar.</p></header>
         <div class="panel panel-pad form">
           <div class="field"><label for="shortcutInput">Atajo</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="shortcutInput" value="${esc(state.shell.shortcut)}" style="max-width:220px"><button class="btn" data-action="save-shortcut">Guardar atajo</button><button class="btn" data-action="capture">Probar ahora</button></div>
-            <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.shortcutActive ? 'Activo.' : 'El sistema no lo deja activo desde la app.'}</span></div>
-          ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland: GNOME no pasa los atajos globales a las apps. Crea el atajo en GNOME y funcionará igual.</p>` : ''}
-          <div class="actions"><button class="btn${state.shell.wayland ? ' primary' : ''}" data-action="gnome-shortcut">Crear atajo en GNOME</button></div>
+            <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.wayland ? (state.shell.gnome ? 'Activo en los atajos de teclado de GNOME.' : 'Pulsa Guardar atajo para activarlo.') : state.shell.shortcutActive ? 'Activo.' : 'El sistema no deja usar este atajo; prueba otro.'}</span></div>
+          ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland, donde GNOME no pasa los atajos globales a las apps. Al guardar, Stölk crea el atajo en Ajustes de GNOME → Teclado → Atajos personalizados.</p>` : ''}
           <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.</span></span></label>
         </div>
       </section>
@@ -1163,8 +1162,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'save-key') { const inp = document.getElementById(`key-${id}`); const key = inp.value.trim(); if (!key) { toast('Pega la clave primero'); return; } act(async () => { await Api.put(`/connections/${id}`, { apiKey: key }); inp.value = ''; }, ['connections', 'shell'], 'Clave guardada en tu ordenador'); }
     else if (a === 'capture') { if (window.stolk?.capture) window.stolk.capture(); else toast('La captura solo funciona en la app de escritorio'); }
     else if (a === 'panel') act(() => window.stolk.setPanel(id === 'on'), ['shell']);
-    else if (a === 'save-shortcut') { const v = document.getElementById('shortcutInput').value.trim(); act(async () => { const r = await window.stolk.setSettings({ shortcut: v }); if (!r.ok) throw new Error(r.message); if (!r.shortcutActive) toast('Este atajo no lo deja usar el sistema. Prueba "Crear atajo en GNOME".'); }, ['shell']); }
-    else if (a === 'gnome-shortcut') act(async () => { const r = await window.stolk.installGnomeShortcut(); toast(`Atajo de GNOME creado: ${r.binding}`); }, ['shell']);
+    else if (a === 'save-shortcut') { const v = document.getElementById('shortcutInput').value.trim(); act(async () => { const r = await window.stolk.setSettings({ shortcut: v }); if (!r.ok) throw new Error(r.message); if (!r.shortcutActive) throw new Error('El sistema no deja usar este atajo; prueba otro.'); }, ['shell'], `Atajo guardado: ${v}`); }
     else if (a === 'save-capture') saveCapture();
     else if (a === 'close-capture') { state.capture = null; closeModal(); }
     else if (a === 'open-project') { state.selectedProject = Number(id); state.mobileProject = true; if (current() !== 'proyectos') location.hash = '#proyectos'; else render(); }
