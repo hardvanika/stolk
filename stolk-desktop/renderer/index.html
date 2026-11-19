@@ -1,0 +1,1199 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline'">
+<title>Stölk</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+</head>
+<body>
+<style>
+/* Monochrome, Cal.com-like: near-black canvas, thin borders, white primary button. Light theme mirrors it. */
+:root {
+  --bg: #F7F7F7; --surface: #FFFFFF; --surface-2: #F1F1F1; --surface-3: #E7E7E7;
+  --ink: #111111; --muted: #6B6B6B; --line: #E4E4E4; --line-strong: #CFCFCF;
+  --accent: #111111; --on-accent: #FFFFFF;
+  --events: #111111; --people: #6B6B6B; --tag-ink: #FFFFFF;
+  --rail: #F7F7F7; --rail-ink: #111111; --rail-muted: #6B6B6B; --rail-hover: #ECECEC;
+  --warn: #111111;
+  --overlay: rgba(0, 0, 0, .4);
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.08);
+  --font-display: "Cal Sans", "Inter", system-ui, sans-serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "Inter", system-ui, sans-serif;
+  --r: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101010; --surface: #161616; --surface-2: #1E1E1E; --surface-3: #2A2A2A;
+    --ink: #EDEDED; --muted: #8C8C8C; --line: #262626; --line-strong: #3A3A3A;
+    --accent: #FFFFFF; --on-accent: #101010;
+    --events: #EDEDED; --people: #8C8C8C; --tag-ink: #101010;
+    --rail: #101010; --rail-ink: #EDEDED; --rail-muted: #8C8C8C; --rail-hover: #1E1E1E;
+    --warn: #EDEDED;
+    --overlay: rgba(0, 0, 0, .65); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101010; --surface: #161616; --surface-2: #1E1E1E; --surface-3: #2A2A2A;
+  --ink: #EDEDED; --muted: #8C8C8C; --line: #262626; --line-strong: #3A3A3A;
+  --accent: #FFFFFF; --on-accent: #101010;
+  --events: #EDEDED; --people: #8C8C8C; --tag-ink: #101010;
+  --rail: #101010; --rail-ink: #EDEDED; --rail-muted: #8C8C8C; --rail-hover: #1E1E1E;
+  --warn: #EDEDED;
+  --overlay: rgba(0, 0, 0, .65); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14.5px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+main:focus, main:focus-visible { outline: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.app { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); border-right: 1px solid var(--line); padding-block: 22px; padding-inline: 12px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; }
+.rail .logo { width: 84px; margin-left: 10px; display: block; }
+.rail .logo .stroke { stroke: var(--rail-ink); }
+.rail .logo .eye { fill: var(--rail-ink); }
+.rail .logo .glint { fill: var(--rail); }
+.nav { display: flex; flex-direction: column; gap: 1px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; color: var(--rail-muted); text-decoration: none; font-weight: 500; transition: background .12s, color .12s; }
+.nav a:hover { background: var(--rail-hover); color: var(--rail-ink); }
+.nav a[aria-current="page"] { background: var(--rail-hover); color: var(--rail-ink); }
+.nav .dot { display: none; }
+.ev-link { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--ink); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.nav-sep { display: block; height: 1px; background: var(--line); margin: 10px 10px; }
+.logo .glint { transition: transform .15s ease-out; }
+.nav .ico { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav .count { margin-left: auto; font-size: 12px; color: var(--rail-muted); font-variant-numeric: tabular-nums; }
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; }
+.rail-foot .me { display: flex; align-items: center; gap: 10px; padding: 8px 10px; font-size: 13px; color: var(--rail-muted); }
+.rail-foot .me .avatar { width: 26px; height: 26px; font-size: 11px; }
+.seg { display: inline-flex; align-self: flex-start; border: 1px solid var(--line-strong); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 6px; padding: 5px 12px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.settings-sec { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px 32px; padding-block: 26px; border-top: 1px solid var(--line); max-width: 980px; }
+.settings-sec:first-of-type { border-top: 0; padding-top: 4px; }
+.settings-sec > header p { margin: 4px 0 0; }
+.settings-sec .stack { gap: 16px; }
+.status-line { display: flex; align-items: center; gap: 8px; }
+.led { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); flex: none; }
+.led.off { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
+
+main { min-width: 0; max-width: 1180px; padding-block: 36px 72px; padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); }
+.view-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; margin-bottom: 28px; }
+h1 { font: 600 22px/1.2 var(--font-display); margin: 0; letter-spacing: 0; text-wrap: balance; }
+h2 { font: 600 18px/1.25 var(--font-display); margin: 0; text-wrap: balance; }
+h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
+.sub { color: var(--muted); margin: 6px 0 0; }
+.eyebrow { font: 500 13px var(--font-ui); color: var(--muted); }
+.mono { font-variant-numeric: tabular-nums; font-size: 13px; }
+.muted { color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); border-radius: 8px; padding: 7px 14px; font-weight: 500; cursor: pointer; white-space: nowrap; text-decoration: none; transition: background .12s, border-color .12s; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent); opacity: .88; }
+.btn.ghost { border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--ink); background: var(--surface-2); }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.btn.danger { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.panel-pad { padding: 20px 22px; }
+.grid-today { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 18px 22px 10px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 22px; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row.clickable { cursor: pointer; transition: background .12s; }
+.row.clickable:hover { background: var(--surface-2); }
+.row .title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .meta { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--font-ui); background: var(--surface-3); color: var(--ink); flex: none; }
+.avatar.lg { width: 56px; height: 56px; font-size: 18px; }
+.datebox { width: 44px; text-align: center; border-radius: 8px; border: 1px solid var(--line); padding: 5px 0 6px; flex: none; }
+.datebox .d { font: 600 17px/1 var(--font-display); }
+.datebox .m { font: 500 11px var(--font-ui); color: var(--muted); }
+
+.tag { display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; padding: 1px 8px; font: 500 12px/1.6 var(--font-ui); color: var(--ink); background: var(--surface-3); white-space: nowrap; }
+.tag.event { background: var(--ink); color: var(--bg); }
+.tag.plain { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.tag.cal { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.tag.cal::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+.tag.warn { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.kpis { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: -12px 0 24px; color: var(--muted); }
+.kpi { padding: 0; background: none; border: 0; display: flex; align-items: baseline; gap: 7px; }
+.kpi .n { font: 600 15px var(--font-ui); color: var(--ink); font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 13.5px; margin: 0; }
+
+.split { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.search { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); }
+.search:focus { outline: none; border-color: var(--ink); }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 3px 11px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); }
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.contact-list .row { grid-template-columns: auto minmax(0, 1fr) auto; padding: 10px 14px; }
+.contact-list .row[aria-selected="true"] { background: var(--surface-2); }
+.since { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.since.stale { color: var(--ink); font-weight: 600; }
+.detail-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.detail-head .who { min-width: 0; flex: 1; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px 20px; margin: 18px 0 4px; }
+.fact .k { font-size: 12px; color: var(--muted); font-weight: 500; }
+.fact .v { overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 4px; }
+.timeline li { position: relative; padding: 0 0 18px 24px; }
+.timeline li::before { content: ""; position: absolute; left: 4px; top: 16px; bottom: 0; width: 1px; background: var(--line-strong); }
+.timeline li:last-child::before { display: none; }
+.timeline .node { position: absolute; left: 0; top: 5px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); background: var(--surface); }
+.timeline .node.cal, .timeline .node.event { border-color: var(--ink); background: var(--ink); }
+.timeline .when { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.timeline .what { margin-top: 2px; }
+.followup { display: inline-flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 13px; color: var(--muted); }
+.back { display: none; }
+
+.event-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.event-card { padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.event-card .top { display: flex; gap: 14px; align-items: flex-start; }
+.guest-row { display: flex; align-items: center; gap: 4px; }
+.guest-row .avatar { width: 26px; height: 26px; font-size: 10.5px; border: 2px solid var(--surface); margin-left: -6px; }
+.guest-row .avatar:first-child { margin-left: 0; }
+.cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+
+.cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.sw.ev { background: var(--ink); }
+.sw.bk { background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.sw.bl { background: repeating-linear-gradient(-45deg, var(--muted) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.sw.fu { border: 1px dashed var(--muted); }
+.month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.month .dow { font: 500 12px var(--font-ui); color: var(--muted); padding: 8px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.month .day { min-height: 108px; padding: 6px 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.month .dow:nth-child(7n), .month .day:nth-child(7n) { border-right: 0; }
+.month .day.out { background: var(--bg); }
+.month .day.out .num { color: var(--muted); opacity: .6; }
+.month .num { font: 500 12.5px var(--font-ui); padding: 1px 6px; align-self: flex-start; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.month .today .num { background: var(--ink); color: var(--bg); }
+.item { display: block; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 3px 6px; font-size: 12px; line-height: 1.3; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); background: var(--surface-3); }
+.item.event { background: var(--ink); color: var(--bg); }
+.item.cal { background: var(--surface-3); }
+.item.block { background: repeating-linear-gradient(-45deg, var(--surface-3) 0 5px, var(--surface-2) 5px 10px); color: var(--muted); }
+.item.follow { background: transparent; color: var(--muted); border: 1px dashed var(--line-strong); }
+.agenda { display: none; }
+
+.ask-box { display: flex; gap: 10px; }
+.ask-box input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 15px; }
+.ask-box input:focus { outline: none; border-color: var(--ink); }
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.plan { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.plan code { font: 500 12.5px var(--font-ui); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; }
+.answer { font-size: 15.5px; line-height: 1.6; }
+.cite { font: 600 11.5px var(--font-ui); background: var(--surface-3); border-radius: 4px; padding: 0 5px; }
+.how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.how .step { padding: 16px 18px; }
+.how .step .n { font: 500 12px var(--font-ui); color: var(--muted); }
+
+.cards-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 500; color: var(--ink); }
+.field input, .field select, .field textarea { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); width: 100%; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--ink); }
+.field textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
+.form { display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.toggle { display: flex; align-items: flex-start; gap: 10px; }
+.toggle input { margin-top: 4px; accent-color: var(--ink); width: 16px; height: 16px; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.note { font-size: 12.5px; color: var(--muted); }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+.slot { border: 1px solid var(--line-strong); background: transparent; border-radius: 8px; padding: 8px 0; text-align: center; cursor: pointer; font: 500 13px var(--font-ui); font-variant-numeric: tabular-nums; }
+.slot:hover { border-color: var(--ink); }
+.slot[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+.overlay { position: fixed; inset: 0; background: var(--overlay); display: grid; place-items: center; padding: 16px; z-index: 50; }
+.modal { width: min(540px, 100%); max-height: calc(100% - 32px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 24px 24px 20px; display: flex; flex-direction: column; gap: 16px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-weight: 500; z-index: 60; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+.proto-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+.empty { padding: 28px 20px; color: var(--muted); text-align: center; }
+.theme-btn { background: none; border: 1px solid var(--line); color: var(--rail-muted); border-radius: 8px; padding: 4px 8px; font-size: 12px; cursor: pointer; align-self: flex-start; }
+.theme-btn:hover { color: var(--rail-ink); }
+
+@media (max-width: 980px) {
+  .grid-today { grid-template-columns: minmax(0, 1fr); }
+  .how { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: sticky; top: env(safe-area-inset-top, 0px); height: auto; flex-direction: row; align-items: center; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 20; overflow-x: auto; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--rail); }
+  .rail .logo { width: 56px; margin: 0; flex: none; }
+  .nav { flex-direction: row; gap: 2px; }
+  .nav a { padding: 6px 9px; white-space: nowrap; font-size: 14px; }
+  .nav .count, .rail-foot .me { display: none; }
+  .rail-foot { margin: 0; }
+  .settings-sec { grid-template-columns: minmax(0, 1fr); }
+  main { padding-block: 22px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font-size: 20px; }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .split.has-detail .list-col { display: none; }
+  .split:not(.has-detail) .detail-col { display: none; }
+  .back { display: inline-flex; }
+  .month { display: none; }
+  .agenda { display: block; }
+  .form-row { grid-template-columns: minmax(0, 1fr); }
+  .ask-box { flex-direction: column; }
+}
+.today-list { max-width: 820px; }
+.today-row { grid-template-columns: 64px minmax(0, 1fr) auto; padding-block: 16px; align-items: start; }
+.today-row.past .title, .today-row.past .hour { opacity: .5; }
+.hour { font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.35; }
+.hour .muted { font-weight: 400; font-size: 13px; }
+.clickable-area { cursor: pointer; }
+.clickable-area:hover .title { text-decoration: underline; text-underline-offset: 3px; }
+.today-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.chat-btns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ask-wrap { max-width: 760px; }
+.ask-box textarea { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 15px; min-height: 96px; resize: vertical; line-height: 1.5; }
+.ask-box textarea:focus { outline: none; border-color: var(--ink); }
+.ask-box { flex-direction: column; align-items: stretch; }
+.ask-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.item.gcal { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.sw.gc { box-shadow: inset 0 0 0 1px var(--ink); }
+@media (max-width: 760px) {
+  .today-row { grid-template-columns: 52px minmax(0, 1fr); }
+  .today-side { grid-column: 2; align-items: flex-start; }
+  .chat-btns { justify-content: flex-start; }
+  .nav-sep { width: 1px; height: 18px; margin: 0 4px; flex: none; }
+}
+@media (min-width: 761px) {
+  main.fit { height: 100vh; display: flex; flex-direction: column; padding-block: 28px 24px; }
+  main.fit .view-head { margin-bottom: 14px; }
+  main.fit .month { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); }
+  main.fit .month .day { min-height: 0; overflow: hidden; }
+}
+</style>
+
+<div class="app">
+  <aside class="rail" aria-label="Navegación">
+    <a href="#hoy" aria-label="Stölk, inicio">
+      <svg class="logo" viewBox="-6 4 243 124" role="img" aria-label="Stölk">
+        <g class="stroke" fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M38 72C32 64 10 64 10 78C10 92 40 88 40 103C40 118 12 118 6 108"/>
+          <path transform="translate(6 0)" d="M62 30L62 102C62 111 67 113 76 113M50 67L76 67"/>
+          <circle transform="translate(13 0)" cx="110" cy="90" r="23"/>
+          <path transform="translate(14 0)" d="M152 20L152 113"/>
+          <path transform="translate(8 0)" d="M180 20L180 113M212 64L183 93M195 82L215 113"/>
+        </g>
+        <g transform="translate(13 0)">
+          <circle class="eye" cx="98" cy="44" r="9"/><circle class="eye" cx="122" cy="44" r="9"/>
+          <circle class="glint" data-cx="98" cx="100.5" cy="41.5" r="4.4"/><circle class="glint" data-cx="122" cx="124.5" cy="41.5" r="4.4"/>
+        </g>
+      </svg>
+    </a>
+    <nav class="nav" id="nav"></nav>
+    <div class="rail-foot" id="railFoot"></div>
+  </aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script src="api.js"></script>
+<script>
+(function(){const modes=['claro','oscuro','sistema'];let i=0;try{i=Math.max(0,modes.indexOf(localStorage.getItem('stolk-theme2')||'claro'))}catch(e){}
+function apply(){const m=modes[i];if(m==='sistema')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m==='oscuro'?'dark':'light');const b=document.getElementById('themeBtn');if(b)b.textContent='Tema: '+m;try{localStorage.setItem('stolk-theme2',m)}catch(e){}}
+window.stolkTheme={get:()=>modes[i],set:(m)=>{i=Math.max(0,modes.indexOf(m));apply();}};apply();})();
+/* Eyes follow the cursor: each glint slides inside its eye toward the pointer, back to rest when the pointer leaves. */
+(function(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;let raf=0,px=0,py=0;
+function move(){raf=0;document.querySelectorAll('.logo').forEach(svg=>{const m=svg.getScreenCTM();if(!m)return;svg.querySelectorAll('.glint').forEach(g=>{const cx=+g.dataset.cx+13,cy=44;const sx=m.a*cx+m.c*cy+m.e,sy=m.b*cx+m.d*cy+m.f;const dx=px-sx,dy=py-sy,d=Math.hypot(dx,dy)||1;const k=Math.min(4.2,d/12);const ox=dx/d*k-2.5,oy=dy/d*k+2.5;g.style.transform=`translate(${ox}px,${oy}px)`;});});}
+document.addEventListener('pointermove',e=>{px=e.clientX;py=e.clientY;if(!raf)raf=requestAnimationFrame(move);});
+document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .glint').forEach(g=>g.style.transform=''));})();
+
+(async () => {
+  const TODAY = new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const daysBetween = (a, b) => Math.round((b - a) / 86400000);
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const MON = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const DOW = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+  const fmt = (s) => { const d = parse(s); return `${d.getDate()} ${MON[d.getMonth()]}`; };
+  const fmtLong = (s) => { const d = parse(s); return `${DOW[(d.getDay() + 6) % 7]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`; };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  const CHANNELS = { reunion: 'Reunión', llamada: 'Llamada', email: 'Email', mensaje: 'Mensaje', evento: 'Evento', cal: 'Cal.com' };
+  const CAL_TYPES = [
+    { id: 'cafe', name: 'Café', min: 30, slug: 'cafe-30' },
+    { id: 'llamada', name: 'Llamada', min: 15, slug: 'llamada-15' },
+    { id: 'reunion', name: 'Reunión', min: 45, slug: 'reunion-45' },
+  ];
+
+  const state = {
+    calConnected: false,
+    gcalConnected: false,
+    lastSync: null,
+    blockEvents: true,
+    contacts: [], events: [], interactions: [], bookings: [], gcal: [], relations: [], projects: [], today: [],
+    claudeOn: false,
+    shell: { shortcut: 'Super+K', panel: false, hasKey: false, shortcutActive: false, wayland: false },
+    capture: null,
+    selectedProject: null,
+    selectedContact: null,
+    contactFilter: 'todos',
+    contactQuery: '',
+    calMonth: new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
+    lastAsk: null,
+  };
+  // ---------- Data from the local server (see plan/stolk-api-interface.md) ----------
+  const nowHM = () => TODAY.toTimeString().slice(0, 5);
+  async function load(...keys) {
+    const want = (k) => !keys.length || keys.includes(k);
+    const jobs = [];
+    if (want('contacts')) jobs.push(Api.get('/contacts').then((v) => { state.contacts = v; }));
+    if (want('interactions')) jobs.push(Api.get('/interactions').then((v) => { state.interactions = v; }));
+    if (want('relations')) jobs.push(Api.get('/relations').then((v) => { state.relations = v; }));
+    if (want('events')) jobs.push(Api.get('/events').then((v) => { state.events = v; }));
+    if (want('projects')) jobs.push(Api.get('/projects').then((v) => { state.projects = v; }));
+    if (want('today')) jobs.push(Api.get('/today').then((v) => { state.today = v; }));
+    if (want('calendar')) {
+      const m = state.calMonth;
+      const from = iso(addDays(new Date(m.getFullYear(), m.getMonth(), 1), -7)), to = iso(addDays(new Date(m.getFullYear(), m.getMonth() + 1, 0), 14));
+      jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; if (v.events) state.events = mergeById(state.events, v.events); }));
+    }
+    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
+    if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.lastSync = v.calcom?.lastSync || v.gcal?.lastSync || null; state.claudeConnected = !!v.claude?.connected; }));
+    if (want('shell') && window.stolk?.settings) jobs.push(window.stolk.settings().then((v) => { state.shell = v; }));
+    await Promise.all(jobs);
+  }
+  const mergeById = (a, b) => { const m = new Map(a.map((x) => [x.id, x])); for (const x of b) m.set(x.id, x); return [...m.values()]; };
+  // Runs an action against the server, reloads what it touched, re-renders, and reports errors as a toast.
+  async function act(fn, reload = [], okMsg) {
+    try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) toast(okMsg); return true; }
+    catch (err) { toast(err.message || 'Algo ha fallado'); return false; }
+  }
+
+  const byId = (id) => state.contacts.find((c) => c.id === id);
+  const lastContact = (cid) => state.interactions.filter((i) => i.cid === cid && i.date <= iso(TODAY)).map((i) => i.date).sort().pop() || null;
+  const daysSince = (cid) => { const l = lastContact(cid); return l ? daysBetween(parse(l), TODAY) : null; };
+  const STALE = 60;
+
+  // ---------- Router ----------
+  const ICONS = {"hoy": "<path d=\"M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z\"/>", "contactos": "<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5\"/><path d=\"M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2\"/>", "proyectos": "<path d=\"M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/>", "eventos": "<path d=\"M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z\"/>", "calendario": "<rect x=\"3\" y=\"4.5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 9.5h18M8 2.5v4M16 2.5v4\"/>", "preguntar": "<path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.8A8 8 0 1 1 21 12z\"/>", "borradores": "<path d=\"M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z\"/><path d=\"M13.5 6.5l4 4\"/>", "integraciones": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/>"};
+  const VIEWS = [
+    { id: 'preguntar', label: 'Preguntar' },
+    { id: 'hoy', label: 'Hoy', count: () => todayItems().length },
+    { id: 'calendario', label: 'Calendario' },
+    { id: 'contactos', label: 'Personas', count: () => state.contacts.length },
+    { id: 'proyectos', label: 'Proyectos', more: true },
+    { id: 'eventos', label: 'Eventos', more: true },
+    { id: 'integraciones', label: 'Ajustes', foot: true },
+  ];
+  const current = () => { const h = location.hash.replace('#', ''); return VIEWS.some((v) => v.id === h) ? h : 'preguntar'; };
+  const main = document.getElementById('main');
+
+  function renderNav() {
+    const cur = current();
+    const link = (v) => `<a href="#${v.id}" ${v.id === cur ? 'aria-current="page"' : ''}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[v.id]}</svg>${v.label}${v.count ? `<span class="count">${v.count()}</span>` : ''}</a>`;
+    const main = VIEWS.filter((v) => !v.foot);
+    document.getElementById('nav').innerHTML = main.map((v, i) => (v.more && !main[i - 1].more ? '<span class="nav-sep" aria-hidden="true"></span>' : '') + link(v)).join('');
+    document.getElementById('railFoot').innerHTML = `<nav class="nav" aria-label="Ajustes">${VIEWS.filter((v) => v.foot).map(link).join('')}</nav><div class="me"><span class="avatar">IV</span>Ivan</div>`;
+  }
+
+  function render() {
+    if (!state.ready) return;
+    renderNav();
+    const v = current();
+    main.classList.toggle('fit', v === 'calendario');
+    main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
+    if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
+    if (v === 'preguntar') document.getElementById('askInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) document.getElementById('askForm').requestSubmit(); });
+  }
+  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
+
+  const protoFlag = '';
+  const tagHtml = (t) => `<span class="tag">${esc(t)}</span>`;
+  const chLabel = (i) => i.ch === 'cal' ? `<span class="tag cal">Cal.com · ${esc(i.calType || '')}</span>` : `<span class="tag plain">${CHANNELS[i.ch]}</span>`;
+
+  // ---------- Hoy ----------
+  function upcomingItems(days) {
+    const end = iso(addDays(TODAY, days));
+    const t = iso(TODAY);
+    const ev = state.events.filter((e) => e.date >= t && e.date <= end).map((e) => ({ kind: 'event', date: e.date, time: e.start, title: e.title, sub: `${e.place} · ${e.guests.length} invitados`, ref: e.id }));
+    const bk = state.bookings.filter((b) => b.date >= t && b.date <= end).map((b) => ({ kind: 'cal', date: b.date, time: b.start, title: `${b.type} con ${byId(b.cid).name}`, sub: `Cal.com · ${b.start}–${b.end}`, ref: b.cid }));
+    return [...ev, ...bk].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  }
+  const todayItems = () => state.today.map((it) => ({ ...it, action: it.src === 'event' ? 'open-event' : it.cid ? 'open-contact' : null, id: it.src === 'event' ? it.id : it.cid, c: it.cid ? byId(it.cid) : null }));
+  const SRC = { event: '<span class="tag event">Mi evento</span>', cal: '<span class="tag cal">Cal.com</span>', gcal: '<span class="tag plain">Google</span>' };
+  function viewToday() {
+    const items = todayItems();
+    const now = nowHM();
+    return `
+      <div class="view-head">
+        <div><h1>Hoy</h1><p class="sub">${esc(fmtLong(iso(TODAY)))} · ${items.length ? `${items.length} ${items.length === 1 ? 'reunión' : 'reuniones'}` : 'sin reuniones'}</p></div>
+      </div>
+      <ul class="list panel today-list">${items.map((it) => `
+        <li class="row today-row ${it.end <= now ? 'past' : ''}">
+          <div class="hour"><div>${it.start}</div><div class="muted">${it.end}</div></div>
+          <div style="min-width:0" ${it.action ? `class="clickable-area" data-action="${it.action}" data-id="${it.id}"` : ''}><div class="title">${esc(it.title)}</div>${it.sub ? `<div class="meta">${esc(it.sub)}</div>` : ''}</div>
+          <div class="today-side">${SRC[it.src]}${it.c ? chatButtons(it.c, true) : ''}</div>
+        </li>`).join('') || '<li class="empty">Hoy no tienes reuniones.</li>'}</ul>`;
+  }
+
+  // ---------- Contactos ----------
+  function filteredContacts() {
+    const q = fold(state.contactQuery.trim());
+    return state.contacts.filter((c) => {
+      if (state.contactFilter === 'seguimiento' && !state.interactions.some((i) => i.cid === c.id && i.follow)) return false;
+      if (state.contactFilter === 'sin-contacto' && !((daysSince(c.id) ?? 0) >= STALE)) return false;
+      if (state.contactFilter !== 'todos' && !['seguimiento', 'sin-contacto'].includes(state.contactFilter) && !c.tags.includes(state.contactFilter)) return false;
+      if (!q) return true;
+      return fold([c.name, c.company, c.role, c.tags.join(' '), c.notes].join(' ')).includes(q);
+    }).sort((a, b) => (lastContact(b.id) || '').localeCompare(lastContact(a.id) || ''));
+  }
+  function contactListHtml() {
+    const list = filteredContacts();
+    return list.map((c) => { const d = daysSince(c.id); return `
+      <li class="row clickable" data-action="select-contact" data-id="${c.id}" aria-selected="${c.id === state.selectedContact}">
+        <div class="avatar">${initials(c.name)}</div>
+        <div style="min-width:0"><div class="title">${esc(c.name)}</div><div class="meta">${esc(c.role)} · ${esc(c.company)}</div></div>
+        <span class="since ${d >= STALE ? 'stale' : ''}">${d === null ? '—' : d === 0 ? 'hoy' : d + ' d'}</span>
+      </li>`; }).join('') || '<li class="empty">Nadie coincide con esa búsqueda.</li>';
+  }
+  function viewContacts() {
+    const allTags = [...new Set(state.contacts.flatMap((c) => c.tags))];
+    const chips = [['todos', 'Todos'], ['seguimiento', 'Con seguimiento'], ['sin-contacto', `+${STALE} días sin hablar`], ...allTags.map((t) => [t, t])];
+    const c = byId(state.selectedContact);
+    return `
+      <div class="view-head">
+        <div><h1>Personas</h1><p class="sub">Tu gente, con todo lo que hablasteis y cuándo.</p></div>
+        <div class="actions">${protoFlag}<button class="btn primary" data-action="new-contact">Nuevo contacto</button></div>
+      </div>
+      <div class="split ${state.mobileDetail ? 'has-detail' : ''}">
+        <div class="list-col">
+          <input class="search" id="contactSearch" type="search" placeholder="Buscar por nombre, empresa, etiqueta o nota" value="${esc(state.contactQuery)}" aria-label="Buscar contactos">
+          <div class="filters">${chips.map(([k, l]) => `<button class="chip" data-action="filter" data-id="${esc(k)}" aria-pressed="${state.contactFilter === k}">${esc(l)}</button>`).join('')}</div>
+          <ul class="list panel contact-list" id="contactList">${contactListHtml()}</ul>
+        </div>
+        <div class="detail-col">${c ? contactDetail(c) : '<div class="panel empty">Elige un contacto.</div>'}</div>
+      </div>`;
+  }
+  function contactDetail(c) {
+    const hist = state.interactions.filter((i) => i.cid === c.id).sort((a, b) => b.date.localeCompare(a.date));
+    const futureBk = state.bookings.filter((b) => b.cid === c.id && b.date >= iso(TODAY)).sort((a, b) => a.date.localeCompare(b.date));
+    const evs = state.events.filter((e) => e.guests.some((g) => g.cid === c.id));
+    const d = daysSince(c.id);
+    return `
+      <section class="panel panel-pad">
+        <button class="btn ghost small back" data-action="back-list">← Personas</button>
+        <div class="detail-head">
+          <div class="avatar lg">${initials(c.name)}</div>
+          <div class="who"><h2 style="font-size:24px">${esc(c.name)}</h2><div class="muted">${esc(c.role)} · ${esc(c.company)}</div></div>
+          <div class="actions">
+            <button class="btn" data-action="log" data-id="${c.id}">Registrar contacto</button>
+            <button class="btn primary" data-action="meet" data-id="${c.id}">Quedar</button>
+          </div>
+        </div>
+        <div class="facts">
+          <div class="fact"><div class="k">Email</div><div class="v mono">${esc(c.email)}</div></div>
+          <div class="fact"><div class="k">Teléfono</div><div class="v mono">${esc(c.phone || '—')}</div></div>
+          <div class="fact"><div class="k">Último contacto</div><div class="v ${d >= STALE ? 'since stale' : ''}">${d === null ? 'Nunca' : `${fmt(lastContact(c.id))} · hace ${d} días`}</div></div>
+          <div class="fact"><div class="k">Etiquetas</div><div class="v tags">${c.tags.map(tagHtml).join('')}</div></div>
+        </div>
+        <p style="margin:14px 0 0">${esc(c.notes)}</p>
+      </section>
+      <section class="panel panel-pad form" style="margin-top:16px" id="personSend">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>Conversaciones</h3>${chatButtons(c, true)}</div>
+        <p class="note" style="margin:0">Abre tu chat con ${esc(c.name.split(' ')[0])} en cada app. Sin Claude.</p>
+        <div class="field"><label for="personText">Escribir mensaje</label><textarea id="personText" placeholder="Escribe aquí y elige por dónde enviarlo…"></textarea></div>
+        ${sendButtons(c, '', 'Hola')}
+      </section>
+      ${futureBk.length || evs.length ? `<section class="panel panel-pad" style="margin-top:16px">
+        <h3 style="margin-bottom:10px">Próximo con ${esc(c.name.split(' ')[0])}</h3>
+        <div class="tags">${futureBk.map((b) => `<span class="tag cal">${esc(b.type)} · ${fmt(b.date)} ${b.start}</span>`).join('')}
+        ${evs.map((e) => `<button class="tag event" style="border:0;cursor:pointer" data-action="open-event" data-id="${e.id}">${esc(e.title)} · ${e.guests.find((g) => g.cid === c.id).st}</button>`).join('')}</div>
+      </section>` : ''}
+      ${connectionsHtml(c)}
+      <section class="panel panel-pad" style="margin-top:16px">
+        <h3 style="margin-bottom:14px">Historial</h3>
+        <ol class="timeline">${hist.map((i) => `
+          <li><span class="node ${i.ch === 'cal' ? 'cal' : i.ch === 'evento' ? 'event' : ''}"></span>
+            <div class="when">${esc(fmtLong(i.date))}</div>
+            <div class="tags" style="margin-top:4px">${chLabel(i)}${i.eventId ? `<span class="tag event">${esc(state.events.find((e) => e.id === i.eventId)?.title)}</span>` : ''}</div>
+            <div class="what">${esc(i.text)}</div>
+            ${i.follow ? `<div class="followup">Seguimiento: <span class="mono ${i.follow < iso(TODAY) ? 'since stale' : ''}">${fmt(i.follow)}</span></div>` : ''}
+          </li>`).join('') || '<li class="muted">Aún no hay nada registrado.</li>'}</ol>
+      </section>`;
+  }
+
+  // ---------- Relaciones (solo con tus datos) ----------
+  function metAt(cid) {
+    const first = state.interactions.filter((i) => i.cid === cid).sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (!first) return null;
+    const ev = first.eventId && state.events.find((e) => e.id === first.eventId);
+    return ev ? `${ev.title} · ${fmt(first.date)}` : `${CHANNELS[first.ch]} · ${fmt(first.date)}`;
+  }
+  function connections(cid) {
+    const out = new Map();
+    const add = (id, why) => { if (id === cid) return; const cur = out.get(id) || []; cur.push(why); out.set(id, cur); };
+    for (const r of state.relations) {
+      if (r.a === cid) add(r.b, r.kind.startsWith('Le presentaste') ? `Le presentaste a ${byId(r.b).name.split(' ')[0]}` : r.kind);
+      if (r.b === cid) add(r.a, r.kind.startsWith('Le presentaste') ? `Le presentaste a ${byId(r.b).name.split(' ')[0]}` : r.kind);
+    }
+    for (const e of state.events) {
+      if (!e.guests.some((g) => g.cid === cid)) continue;
+      for (const g of e.guests) add(g.cid, `${e.status === 'hecho' ? 'Coincidieron en' : 'Ambos invitados a'} ${e.title}`);
+    }
+    for (const p of state.projects) {
+      if (!p.people.some((x) => x.cid === cid)) continue;
+      for (const x of p.people) add(x.cid, `Proyecto ${p.title}`);
+    }
+    return [...out.entries()].map(([id, why]) => ({ c: byId(id), why: [...new Set(why)] })).sort((a, b) => b.why.length - a.why.length);
+  }
+  function connectionsHtml(c) {
+    const conns = connections(c.id);
+    const m = metAt(c.id);
+    return `<section class="panel panel-pad" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h3>Conexiones</h3>${m ? `<span class="muted" style="font-size:13.5px">Os conocisteis en <b style="color:var(--ink)">${esc(m)}</b></span>` : ''}</div>
+      <ul class="list" style="margin-top:8px">${conns.slice(0, 6).map(({ c: o, why }) => `
+        <li class="row clickable" style="padding-inline:0" data-action="open-contact" data-id="${o.id}">
+          <div class="avatar">${initials(o.name)}</div>
+          <div style="min-width:0"><div class="title">${esc(o.name)}</div><div class="meta">${esc(why.join(' · '))}</div></div>
+          <span class="muted">›</span>
+        </li>`).join('') || '<li class="muted">Aún no coincide con nadie de tu red.</li>'}</ul>
+    </section>`;
+  }
+  // Who is likely to come to a planned event, inferred from past co-attendance only.
+
+  // ---------- Proyectos ----------
+  const TASK_ST = ['pendiente', 'enviado', 'hecho'];
+  const pendingTasks = () => state.projects.flatMap((p) => p.tasks.filter((t) => t.st === 'pendiente').map((t) => ({ p, t }))).sort((a, b) => a.t.due.localeCompare(b.t.due));
+  function viewProjects() {
+    const p = state.projects.find((x) => x.id === state.selectedProject) || state.projects[0];
+    const ev = p?.eventId && state.events.find((e) => e.id === p.eventId);
+    return `
+      <div class="view-head">
+        <div><h1>Proyectos</h1><p class="sub">Quién está en cada proyecto y qué le tienes que enviar.</p></div>
+        <div class="actions">${protoFlag}<button class="btn primary" data-action="new-project">Nuevo proyecto</button></div>
+      </div>
+      <div class="split ${state.mobileProject ? 'has-detail' : ''}">
+        <div class="list-col">
+          <ul class="list panel contact-list">${state.projects.map((x) => { const n = x.tasks.filter((t) => t.st === 'pendiente').length; return `
+            <li class="row clickable" data-action="open-project" data-id="${x.id}" aria-selected="${x.id === p?.id}">
+              <div class="avatar" style="border-radius:8px">${initials(x.title)}</div>
+              <div style="min-width:0"><div class="title">${esc(x.title)}</div><div class="meta">${x.people.length} personas · ${esc(x.desc)}</div></div>
+              <span class="since ${n ? '' : 'muted'}">${n ? n + ' pend.' : 'al día'}</span>
+            </li>`; }).join('')}</ul>
+        </div>
+        <div class="detail-col">${p ? `
+          <section class="panel panel-pad">
+            <button class="btn ghost small back" data-action="back-projects">← Proyectos</button>
+            <div class="detail-head"><div class="who"><div class="eyebrow">${esc(p.status)}</div><h2 style="font-size:24px">${esc(p.title)}</h2></div>
+              ${ev ? `<button class="tag event" style="border:0;cursor:pointer" data-action="open-event" data-id="${ev.id}">${esc(ev.title)} · ${fmt(ev.date)}</button>` : ''}</div>
+            <p style="margin:10px 0 0">${esc(p.desc)}</p>
+          </section>
+          ${p.people.map((pp) => { const c = byId(pp.cid); const ts = p.tasks.filter((t) => t.cid === c.id); return `
+          <section class="panel panel-pad" style="margin-top:12px">
+            <div class="detail-head">
+              <div class="avatar">${initials(c.name)}</div>
+              <div class="who"><h3>${esc(c.name)}</h3><div class="muted" style="font-size:13.5px">${esc(pp.role)} · ${esc(c.company)}</div></div>
+              <div class="actions"><button class="btn small" data-action="add-task" data-id="${p.id}:${c.id}">Añadir pendiente</button><button class="btn small primary" data-action="meet" data-id="${c.id}">Quedar</button></div>
+            </div>
+            <ul class="list" style="margin-top:8px">${ts.map((t) => `
+              <li class="row" style="padding-inline:0">
+                <button class="tag ${t.st === 'hecho' ? '' : t.st === 'enviado' ? 'cal' : 'warn'}" style="cursor:pointer;min-width:84px;justify-content:center;${t.st === 'hecho' ? 'border:0' : ''}" data-action="task-status" data-id="${p.id}:${t.id}" title="Cambiar estado">${t.st}</button>
+                <div style="min-width:0"><div class="title" style="white-space:normal;${t.st === 'hecho' ? 'text-decoration:line-through;color:var(--muted)' : ''}">${esc(t.text)}</div></div>
+                <span class="mono ${t.st === 'pendiente' && t.due < iso(TODAY) ? 'since stale' : 'muted'}">${fmt(t.due)}</span>
+              </li>`).join('') || '<li class="muted" style="padding:6px 0">Nada pendiente con esta persona.</li>'}</ul>
+          </section>`; }).join('')}
+          <div style="margin-top:12px"><label class="eyebrow" for="addPerson">Añadir persona al proyecto</label>
+            <select id="addPerson" data-project="${p.id}" class="search" style="margin-top:6px"><option value="">Elige un contacto…</option>${state.contacts.filter((c) => !p.people.some((x) => x.cid === c.id)).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
+        ` : '<div class="panel empty">Crea tu primer proyecto.</div>'}</div>
+      </div>`;
+  }
+
+  // ---------- Eventos ----------
+  function eventCard(e) {
+    const confirmed = e.guests.filter((g) => g.st !== 'invitado').length;
+    return `
+      <article class="panel event-card">
+        <div class="top">
+          <div class="datebox"><div class="d">${parse(e.date).getDate()}</div><div class="m">${MON[parse(e.date).getMonth()]}</div></div>
+          <div style="min-width:0;flex:1">
+            <h2>${esc(e.title)}</h2>
+            <div class="muted" style="font-size:14px">${esc(e.place)} · <span class="mono">${e.start}–${e.end}</span></div>
+            ${e.url ? `<a class="ev-link" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.url.replace(/^https?:\/\//, ''))}</a>` : ''}
+          </div>
+          <span class="tag ${e.status === 'hecho' ? 'plain' : 'event'}">${e.status === 'hecho' ? 'Hecho' : 'Planeado'}</span>
+        </div>
+        <p style="margin:0">${esc(e.desc)}</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div class="guest-row">${e.guests.slice(0, 6).map((g) => `<span class="avatar" title="${esc(byId(g.cid).name)}">${initials(byId(g.cid).name)}</span>`).join('')}</div>
+          <span class="muted" style="font-size:13.5px">${confirmed}/${e.guests.length} ${e.status === 'hecho' ? 'asistieron' : 'confirmados'}</span>
+        </div>
+        ${e.status === 'planeado' ? `<div class="cal-sync">${state.calConnected && state.blockEvents ? `<span class="led"></span>Bloqueado en Cal.com · ${fmt(e.date)} ${e.start}–${e.end}` : '<span class="led off"></span>Sin bloquear en Cal.com'}</div>` : ''}
+        <div class="actions"><button class="btn small" data-action="open-event" data-id="${e.id}">Ver invitados</button></div>
+      </article>`;
+  }
+  function viewEvents() {
+    const planned = state.events.filter((e) => e.status === 'planeado').sort((a, b) => a.date.localeCompare(b.date));
+    const done = state.events.filter((e) => e.status === 'hecho').sort((a, b) => b.date.localeCompare(a.date));
+    return `
+      <div class="view-head">
+        <div><h1>Eventos que organizas</h1><p class="sub">Al crear uno, Stölk bloquea esa franja en tu Cal.com para que nadie reserve encima.</p></div>
+        <div class="actions">${protoFlag}<button class="btn primary" data-action="new-event">Nuevo evento</button></div>
+      </div>
+      <h2 style="margin:0 0 12px">Próximos</h2>
+      <div class="event-cards">${planned.map(eventCard).join('') || '<div class="panel empty">Sin eventos planeados.</div>'}</div>
+      <h2 style="margin:28px 0 12px">Pasados</h2>
+      <div class="event-cards">${done.map(eventCard).join('')}</div>`;
+  }
+
+  // ---------- Calendario ----------
+  function itemsOn(dateStr) {
+    const out = [];
+    for (const e of state.events) if (e.date === dateStr) out.push({ cls: 'event', label: `${e.start} ${e.title}`, action: 'open-event', id: e.id });
+    for (const e of state.events) if (e.date === dateStr && e.status === 'planeado' && state.calConnected && state.blockEvents) out.push({ cls: 'block', label: 'Bloqueado en Cal.com', action: 'open-event', id: e.id });
+    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${byId(b.cid).name.split(' ')[0]}`, action: 'open-contact', id: b.cid });
+    if (state.gcalConnected) for (const g of state.gcal) if (g.date === dateStr) out.push({ cls: 'gcal', label: `${g.start} ${g.title}`, action: 'gcal', id: g.id });
+    for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${byId(i.cid).name.split(' ')[0]}`, action: 'open-contact', id: i.cid });
+    const t = (x) => /^\d\d:\d\d/.test(x.label) ? x.label.slice(0, 5) : x.cls === 'block' ? x.label : '99';
+    return out.sort((a, b) => t(a).localeCompare(t(b)));
+  }
+  function viewCalendar() {
+    const m = state.calMonth;
+    const first = new Date(m.getFullYear(), m.getMonth(), 1);
+    const start = addDays(first, -((first.getDay() + 6) % 7));
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const d = addDays(start, i);
+      if (i >= 35 && d.getMonth() !== m.getMonth()) break;
+      const ds = iso(d);
+      cells.push(`<div class="day ${d.getMonth() !== m.getMonth() ? 'out' : ''} ${ds === iso(TODAY) ? 'today' : ''}">
+        <span class="num">${d.getDate()}</span>
+        ${itemsOn(ds).map((it) => `<button class="item ${it.cls}" data-action="${it.action}" data-id="${it.id}" title="${esc(it.label)}">${esc(it.label)}</button>`).join('')}
+      </div>`);
+    }
+    // Agenda list for phones.
+    const days = [];
+    for (let d = new Date(first); d.getMonth() === m.getMonth(); d = addDays(d, 1)) {
+      const its = itemsOn(iso(d));
+      if (its.length) days.push(`<li class="row" style="align-items:start"><div class="datebox"><div class="d">${d.getDate()}</div><div class="m">${DOW[(d.getDay() + 6) % 7]}</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:0">${its.map((it) => `<button class="item ${it.cls}" data-action="${it.action}" data-id="${it.id}">${esc(it.label)}</button>`).join('')}</div><span></span></li>`);
+    }
+    return `
+      <div class="view-head">
+        <div><h1>${MONTHS[m.getMonth()][0].toUpperCase() + MONTHS[m.getMonth()].slice(1)} ${m.getFullYear()}</h1><p class="sub">Cal.com y Google Calendar juntos, con tus eventos y seguimientos.</p></div>
+        <div class="cal-toolbar">
+          <button class="btn small" data-action="month" data-id="-1" aria-label="Mes anterior">←</button>
+          <button class="btn small" data-action="month" data-id="0">Hoy</button>
+          <button class="btn small" data-action="month" data-id="1" aria-label="Mes siguiente">→</button>
+          <button class="btn primary small" data-action="new-event">Nuevo evento</button>
+        </div>
+      </div>
+      <div class="cal-legend" style="margin-bottom:12px">
+        <span><i class="sw ev"></i>Mis eventos</span>
+        <span><i class="sw bk"></i>Reservas de Cal.com</span>
+        <span><i class="sw bl"></i>Bloqueado en Cal.com</span>
+        <span><i class="sw gc"></i>Google Calendar</span>
+        <span><i class="sw fu"></i>Seguimientos</span>
+        ${protoFlag}
+      </div>
+      <div class="month" role="grid">${DOW.map((d) => `<div class="dow">${d}</div>`).join('')}${cells.join('')}</div>
+      <ul class="list panel agenda">${days.join('') || '<li class="empty">Nada este mes.</li>'}</ul>`;
+  }
+
+  // ---------- Preguntar (local RAG, simulated on example data) ----------
+  async function claudeAsk(q) {
+    state.lastAsk = { q, loading: true };
+    render();
+    try {
+      const r = await Api.post('/ask', { question: q });
+      state.lastAsk = { q, answer: r.answer, cites: (r.cites || []).filter((x) => x.type === 'contact').map((x) => byId(x.id)).filter(Boolean), draft: r.draft || null };
+    } catch (err) {
+      state.lastAsk = { q, error: err.message };
+    }
+    render();
+  }
+  function viewAsk() {
+    const a = state.lastAsk;
+    const dc = a?.draft && byId(a.draft.cid);
+    return `
+      <div class="ask-wrap">
+      <div class="view-head"><div><h1>Preguntar</h1></div></div>
+      <form class="ask-box" id="askForm">
+        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude">${esc(a?.q || '')}</textarea>
+        <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit">Enviar</button></div>
+      </form>
+      ${a?.loading ? '<p class="muted" style="margin-top:20px">Pensando…</p>' : ''}
+      ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|key|401/i.test(a.error) ? '<p class="note">Pon tu clave de Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
+      ${a?.draft && dc ? `
+        <section class="panel panel-pad form" style="margin-top:20px" id="askDraft" data-cid="${dc.id}">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h2>Mensaje para ${esc(dc.name)}</h2><span class="tag cal">Claude</span></div>
+          <div class="field"><label for="askDraftText">Edítalo antes de enviar</label><textarea id="askDraftText" style="min-height:150px">${esc(a.draft.text)}</textarea></div>
+          ${sendButtons(dc, a.draft.text, 'Hola')}
+        </section>` : ''}
+      ${a?.answer ? `
+        <section class="panel panel-pad" style="margin-top:${a.draft ? 14 : 20}px"><div class="answer" style="white-space:pre-wrap">${esc(a.answer)}</div></section>
+        ${a.cites.length ? `<ul class="list panel" style="margin-top:14px">${a.cites.map((c, i) => `
+          <li class="row clickable" data-action="open-contact" data-id="${c.id}">
+            <div class="avatar">${initials(c.name)}</div>
+            <div style="min-width:0"><div class="title"><span class="cite">[${i + 1}]</span> ${esc(c.name)}</div><div class="meta">${esc([c.role, c.company].filter(Boolean).join(' · '))}</div></div>
+            <span class="muted">›</span>
+          </li>`).join('')}</ul>` : ''}` : ''}
+      </div>`;
+  }
+
+  // ---------- Cal.com ----------
+  function viewCal() {
+    return `
+      <div class="view-head"><div><h1>Ajustes</h1><p class="sub">El atajo de captura, el aspecto y lo que Stölk conecta fuera de tu ordenador.</p></div></div>
+      <section class="settings-sec">
+        <header><h2>Guardar personas desde la pantalla</h2><p class="note">Pulsa el atajo, arrastra un recuadro sobre el perfil, la tarjeta o el chat, y Claude rellena la ficha. Tú la revisas antes de guardar.</p></header>
+        <div class="panel panel-pad form">
+          <div class="field"><label for="shortcutInput">Atajo</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="shortcutInput" value="${esc(state.shell.shortcut)}" style="max-width:220px"><button class="btn" data-action="save-shortcut">Guardar atajo</button><button class="btn" data-action="capture">Probar ahora</button></div>
+            <span class="note">Formato de Electron, por ejemplo Super+K o Ctrl+Alt+S. ${state.shell.shortcutActive ? 'Activo.' : 'El sistema no lo deja activo desde la app.'}</span></div>
+          ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland: GNOME no pasa los atajos globales a las apps. Crea el atajo en GNOME y funcionará igual.</p>` : ''}
+          <div class="actions"><button class="btn${state.shell.wayland ? ' primary' : ''}" data-action="gnome-shortcut">Crear atajo en GNOME</button></div>
+          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.</span></span></label>
+        </div>
+      </section>
+      <section class="settings-sec">
+        <header><h2>Apariencia</h2></header>
+        <div class="panel panel-pad form">
+          <div class="field"><label>Tema</label><div class="seg" role="group" aria-label="Tema">${['claro', 'oscuro', 'sistema'].map((m) => `<button type="button" data-action="theme" data-id="${m}" aria-pressed="${window.stolkTheme.get() === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div></div>
+        </div>
+      </section>
+      <section class="settings-sec">
+        <header><h2>Conexiones</h2><p class="note">Lo único que sale de tu ordenador. Tus datos se quedan en la base local.</p></header>
+      <div class="stack">
+        <section class="panel panel-pad form">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Cal.com</h2>
+            <span class="tag ${state.calConnected ? '' : 'warn'}">${state.calConnected ? 'Conectado' : 'Sin conectar'}</span></div>
+          ${state.calConnected ? '' : `<div class="field"><label for="key-calcom">Clave API de Cal.com</label>
+            <div style="display:flex;gap:8px"><input id="key-calcom" type="password" placeholder="cal_live_…" autocomplete="off"><button class="btn primary" data-action="save-key" data-id="calcom">Conectar</button></div></div>`}
+          <p class="note" style="margin:0">Se guarda solo en <span class="mono">~/.stolk/.env</span> en tu ordenador y nunca se sube a GitHub. La creas en Cal.com → Settings → Developer → API Keys.</p>
+          ${state.calConnected ? `<div class="actions"><button class="btn" data-action="sync">Sincronizar ahora</button><button class="btn danger" data-action="disconnect">Desconectar</button></div>
+          <dl class="kv"><dt>Última sincronización</dt><dd class="mono">${esc(state.lastSync || 'nunca')}</dd></dl>` : ''}
+        </section>
+        <section class="panel panel-pad form">
+          <h2>Qué se sincroniza</h2>
+          <label class="toggle"><input type="checkbox" id="tBlock" ${state.blockEvents ? 'checked' : ''}><span><b>Bloquear mis eventos en Cal.com</b><br><span class="note">Cada evento que creas en Stölk reserva su franja en un tipo de evento oculto, "Bloqueado (Stölk)". Si lo mueves o cancelas, se actualiza solo.</span></span></label>
+        </section>
+        <section class="panel panel-pad form">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Google Calendar</h2><span class="tag ${state.gcalConnected ? '' : 'plain'}">${state.gcalConnected ? 'Conectado' : 'Sin conectar'}</span></div>
+          <p class="note" style="margin:0">Solo lectura. Stölk enseña tus citas de Google en Hoy y en el Calendario. Cal.com ya mira este mismo calendario para no darte huecos ocupados.</p>
+          <div class="actions">${state.gcalConnected ? '<button class="btn danger" data-action="gcal-off">Desconectar</button>' : '<button class="btn primary" data-action="gcal-on">Conectar con Google</button>'}</div>
+        </section>
+        <section class="panel panel-pad form">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Claude</h2><span class="tag ${state.claudeOn ? '' : 'plain'}">${state.claudeOn ? 'Activo' : 'Apagado'}</span></div>
+          <p class="note" style="margin:0">Responde en Preguntar, escribe tus mensajes y lee tus capturas. Recibe tu pregunta y los datos de Stölk que hagan falta para contestarla. Nada se envía a nadie sin tu clic.</p>
+          <div class="field"><label for="key-claude">Clave de Claude ${state.claudeConnected ? '(guardada)' : ''}</label>
+            <div style="display:flex;gap:8px"><input id="key-claude" type="password" placeholder="${state.claudeConnected ? 'Pega otra para cambiarla' : 'sk-ant-…'}" autocomplete="off"><button class="btn" data-action="save-key" data-id="claude">Guardar</button></div>
+            <span class="note">Se guarda solo en <span class="mono">~/.stolk/.env</span> (ANTHROPIC_API_KEY).</span></div>
+          <dl class="kv"><dt>Modelo</dt><dd class="mono">claude-opus-5-5</dd></dl>
+          <div class="actions">${state.claudeOn ? '<button class="btn danger" data-action="claude-off">Apagar</button>' : '<button class="btn primary" data-action="claude-on">Activar</button>'}</div>
+        </section>
+        <section class="panel panel-pad">
+          <h2 style="margin-bottom:12px">Tus tipos de reunión</h2>
+          <ul class="list">${CAL_TYPES.map((t) => `
+            <li class="row" style="padding-inline:0"><span class="sw bk"></span>
+              <div style="min-width:0"><div class="title">${t.name} · ${t.min} min</div><div class="meta mono">cal.com/tu-usuario/${t.slug}</div></div>
+              <button class="btn small" data-action="copy" data-id="cal.com/tu-usuario/${t.slug}">Copiar enlace</button></li>`).join('')}
+            <li class="row" style="padding-inline:0"><span class="sw bl"></span>
+              <div style="min-width:0"><div class="title">Bloqueado (Stölk)</div><div class="meta">Oculto. Solo lo usa Stölk para bloquear tus eventos.</div></div><span></span></li>
+          </ul>
+        </section>
+      </div>
+      </section>
+      <section class="settings-sec">
+        <header><h2>Tus datos</h2></header>
+        <div class="panel panel-pad form">
+          <dl class="kv"><dt>Dónde</dt><dd class="mono">~/.stolk/stolk.db</dd><dt>Personas</dt><dd>${state.contacts.length}</dd><dt>Eventos</dt><dd>${state.events.length}</dd></dl>
+        </div>
+      </section>`;
+  }
+
+  // ---------- Capture review (Super+K) ----------
+  const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['website', 'Web']];
+  async function onCapture(r) {
+    state.capture = { ...(state.capture || {}), ...r };
+    if (r.status === 'ok') {
+      const q = new URLSearchParams(Object.entries({ email: r.card.email, phone: r.card.phone, name: r.card.name }).filter(([, v]) => v)).toString();
+      try { state.capture.matches = q ? await Api.get(`/contacts/match?${q}`) : []; } catch { state.capture.matches = []; }
+    }
+    modalCapture();
+  }
+  function modalCapture() {
+    const cap = state.capture;
+    const img = cap.image ? `<img src="${cap.image}" alt="Tu captura" style="max-width:100%;max-height:180px;border:1px solid var(--line);border-radius:8px;object-fit:contain;align-self:flex-start">` : '';
+    if (cap.status === 'reading') return openModal(`<h2>Leyendo tu captura…</h2>${img}<p class="note" style="margin:0">Se ha enviado a Claude solo este recorte.</p><div class="modal-foot"><button type="button" class="btn ghost" data-action="close-capture">Cancelar</button></div>`, () => {});
+    if (cap.status === 'error') return openModal(`<h2>No se pudo leer la captura</h2>${img}<p style="margin:0">${esc(cap.message)}</p>${/clave/i.test(cap.message) ? '<p class="note">Pon tu clave de Claude en <a href="#integraciones" data-action="close-capture">Ajustes</a>.</p>' : ''}<div class="modal-foot"><button type="button" class="btn ghost" data-action="close-capture">Cerrar</button></div>`, () => {});
+    const c = cap.card;
+    const best = (cap.matches || [])[0];
+    openModal(`
+      <h2>${c.found ? 'Guardar persona' : 'No veo a nadie en la captura'}</h2>
+      ${img}
+      <p class="note" style="margin:0">Solo se envió este recorte a Claude. Revisa los datos: nada se guarda hasta que pulses Guardar.</p>
+      ${best ? `<label class="toggle"><input type="checkbox" name="merge" value="${best.contact.id}" checked><span><b>Ya tienes a ${esc(best.contact.name)}</b><br><span class="note">Coincide por ${{ email: 'email', phone: 'teléfono', name: 'nombre' }[best.matchedOn] || best.matchedOn}. Se añadirán los datos nuevos a su ficha.</span></span></label>` : ''}
+      <div class="form">
+        ${CARD_FIELDS.map(([k, label]) => `<div class="field"><label for="cap-${k}">${label}</label><input id="cap-${k}" name="${k}" value="${esc(c[k] || '')}"${k === 'name' ? ' required' : ''}></div>`).join('')}
+        <div class="field"><label for="cap-notes">Notas</label><textarea id="cap-notes" name="notes">${esc(c.notes || '')}</textarea></div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-capture">Descartar</button><button class="btn primary" type="submit">Guardar</button></div>`,
+    (fd) => saveCapture(fd));
+  }
+  function saveCapture(fd) {
+    const card = Object.fromEntries(CARD_FIELDS.map(([k]) => [k, String(fd.get(k) || '').trim()]));
+    const notes = String(fd.get('notes') || '').trim();
+    const mergeId = Number(fd.get('merge')) || null;
+    act(async () => {
+      let id = mergeId;
+      if (mergeId) {
+        const old = byId(mergeId) || {};
+        const patch = Object.fromEntries(Object.entries(card).filter(([k, v]) => v && !old[k]));
+        if (notes) patch.notes = [old.notes, notes].filter(Boolean).join('\n');
+        if (Object.keys(patch).length) await Api.patch(`/contacts/${mergeId}`, patch);
+      } else {
+        const made = await Api.post('/contacts', { ...card, tags: [], notes });
+        id = made.id;
+      }
+      await Api.post('/interactions', { cid: id, date: iso(TODAY), ch: 'mensaje', text: 'Guardado desde una captura de pantalla.' });
+      state.capture = null; state.selectedContact = id; state.mobileDetail = true;
+      closeModal(); location.hash = '#contactos';
+    }, ['contacts', 'interactions'], mergeId ? 'Ficha actualizada' : 'Persona guardada');
+  }
+
+  // ---------- Modals ----------
+  const modalRoot = document.getElementById('modalRoot');
+  function openModal(html, onSubmit) {
+    modalRoot.innerHTML = `<div class="overlay" data-action="close-modal"><form class="modal" id="modalForm" role="dialog" aria-modal="true">${html}</form></div>`;
+    const form = document.getElementById('modalForm');
+    form.addEventListener('submit', (e) => { e.preventDefault(); onSubmit(new FormData(form), form); });
+    form.querySelector('input, select, textarea, button')?.focus();
+  }
+  const closeModal = () => { modalRoot.innerHTML = ''; };
+  const openExternal = (url) => { if (window.stolk?.openExternal) window.stolk.openExternal(url); else window.open(url, '_blank', 'noopener'); };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  function toast(msg) {
+    const root = document.getElementById('toastRoot');
+    root.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`;
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => { root.innerHTML = ''; }, 2600);
+  }
+  const contactOptions = (sel) => state.contacts.map((c) => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+
+  function modalLog(cid) {
+    openModal(`
+      <h2>Registrar contacto</h2>
+      <div class="form">
+        <div class="form-row">
+          <div class="field"><label for="mCid">Con quién</label><select id="mCid" name="cid">${contactOptions(cid)}</select></div>
+          <div class="field"><label for="mCh">Cómo</label><select id="mCh" name="ch">${Object.entries(CHANNELS).filter(([k]) => k !== 'cal').map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label for="mText">Qué hablasteis</label><textarea id="mText" name="text" required placeholder="Le pasé el deck. Quiere verlo con su socio."></textarea></div>
+        <div class="form-row">
+          <div class="field"><label for="mDate">Fecha</label><input id="mDate" type="date" name="date" value="${iso(TODAY)}"></div>
+          <div class="field"><label for="mFollow">Seguimiento (opcional)</label><input id="mFollow" type="date" name="follow"></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>`,
+    (fd) => {
+      const body = { cid: Number(fd.get('cid')), date: fd.get('date'), ch: fd.get('ch'), text: fd.get('text') };
+      if (fd.get('follow')) body.follow = fd.get('follow');
+      state.selectedContact = body.cid;
+      act(async () => { await Api.post('/interactions', body); closeModal(); }, ['interactions', 'contacts', 'today'], 'Guardado en el historial');
+    });
+  }
+
+  function slotsFor(dateStr) {
+    const taken = state.bookings.filter((b) => b.date === dateStr).map((b) => b.start);
+    const blocked = state.events.filter((e) => e.date === dateStr && e.status === 'planeado');
+    return ['09:00', '09:30', '10:00', '10:30', '11:00', '12:00', '16:00', '16:30', '17:00', '18:00', '19:30']
+      .filter((s) => !taken.includes(s) && !blocked.some((e) => s >= e.start && s < e.end));
+  }
+
+  function modalEvent() {
+    openModal(`
+      <h2>Nuevo evento</h2>
+      <div class="form">
+        <div class="field"><label for="eTitle">Nombre</label><input id="eTitle" name="title" required placeholder="Tech & Tapas #5"></div>
+        <div class="form-row">
+          <div class="field"><label for="eDate">Día</label><input id="eDate" type="date" name="date" value="${iso(addDays(TODAY, 14))}" required></div>
+          <div class="field"><label for="ePlace">Lugar</label><input id="ePlace" name="place" placeholder="Impact Lab, Madrid" list="places"><datalist id="places">${[...new Set(state.events.map((e) => e.place))].map((p) => `<option value="${esc(p)}">`).join('')}</datalist></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="eStart">Empieza</label><input id="eStart" type="time" name="start" value="19:00"></div>
+          <div class="field"><label for="eEnd">Acaba</label><input id="eEnd" type="time" name="end" value="21:00"></div>
+        </div>
+        <div class="field"><label for="eUrl">Enlace del evento</label><input id="eUrl" name="url" type="url" placeholder="https://lu.ma/… o https://meetup.com/…"></div>
+        <div class="field"><label for="eGuests">Invitados</label><select id="eGuests" name="guests" multiple size="5">${contactOptions(null)}</select><span class="note">Ctrl/Cmd + clic para elegir varios.</span></div>
+        <label class="toggle"><input type="checkbox" name="block" ${state.calConnected && state.blockEvents ? 'checked' : ''} ${state.calConnected ? '' : 'disabled'}><span>Bloquear esta franja en Cal.com</span></label>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear evento</button></div>`,
+    (fd) => {
+      const ev = { title: fd.get('title'), date: fd.get('date'), start: fd.get('start'), end: fd.get('end'), place: fd.get('place') || '', url: fd.get('url') || undefined, status: 'planeado', desc: '', guests: fd.getAll('guests').map((g) => ({ cid: Number(g), st: 'invitado' })), block: !!fd.get('block') };
+      act(async () => { await Api.post('/events', ev); closeModal(); location.hash = '#eventos'; }, ['events', 'today', 'calendar'],
+        ev.block ? `Creado y bloqueado en Cal.com: ${fmt(ev.date)} ${ev.start}–${ev.end}` : 'Evento creado');
+    });
+  }
+
+  async function modalEventDetail(id) {
+    const e = state.events.find((x) => x.id === id);
+    if (!e) return;
+    let likely = [];
+    if (e.status === 'planeado') { try { likely = (await Api.get(`/events/${id}/likely-guests`)).map((x) => ({ c: byId(x.cid), n: x.score, why: x.reasons })).filter((x) => x.c); } catch { likely = []; } }
+    const opts = e.status === 'hecho' ? ['asistió', 'no vino'] : ['invitado', 'confirmado', 'no viene'];
+    openModal(`
+      <div><div class="eyebrow">${esc(fmtLong(e.date))} · ${e.start}–${e.end}</div><h2 style="font-size:22px;margin-top:4px">${esc(e.title)}</h2><div class="muted">${esc(e.place)}</div>${e.url ? `<a class="ev-link" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.url.replace(/^https?:\/\//, ''))}</a>` : ''}</div>
+      ${e.status === 'planeado' ? `<div class="cal-sync" style="border:0;padding:0">${state.calConnected && state.blockEvents ? '<span class="led"></span>Franja bloqueada en tu Cal.com' : '<span class="led off"></span>No bloqueado en Cal.com'}</div>` : ''}
+      <ul class="list">${e.guests.map((g) => { const c = byId(g.cid); return `
+        <li class="row" style="padding-inline:0">
+          <div class="avatar">${initials(c.name)}</div>
+          <div style="min-width:0"><div class="title">${esc(c.name)}</div><div class="meta">${esc(c.company)}</div></div>
+          <select aria-label="Estado de ${esc(c.name)}" data-guest="${c.id}" class="field" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface)">${opts.map((o) => `<option ${o === g.st ? 'selected' : ''}>${o}</option>`).join('')}</select>
+        </li>`; }).join('')}</ul>
+      ${e.status === 'planeado' ? (() => { const lk = likely.slice(0, 4); return lk.length ? `<div><div class="eyebrow" style="margin-bottom:6px">Probablemente vengan (según tus datos)</div><ul class="list">${lk.map((x) => `
+        <li class="row" style="padding-inline:0"><div class="avatar">${initials(x.c.name)}</div>
+          <div style="min-width:0"><div class="title">${esc(x.c.name)}</div><div class="meta">${esc(x.why.join(' · '))}</div></div>
+          <button type="button" class="btn small" data-action="invite" data-id="${e.id}:${x.c.id}">Invitar</button></li>`).join('')}</ul></div>` : ''; })() : ''}
+      <div class="field"><label for="addGuest">Añadir invitado</label><select id="addGuest"><option value="">Elige un contacto…</option>${state.contacts.filter((c) => !e.guests.some((g) => g.cid === c.id)).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button></div>`, () => {});
+    modalRoot.querySelectorAll('[data-guest]').forEach((s) => s.addEventListener('change', () => act(() => Api.put(`/events/${id}/guests/${s.dataset.guest}`, { st: s.value }), ['events'])));
+    document.getElementById('addGuest').addEventListener('change', (ev) => { if (!ev.target.value) return; act(async () => { await Api.put(`/events/${id}/guests/${ev.target.value}`, { st: e.status === 'hecho' ? 'asistió' : 'invitado' }); }, ['events']).then((ok) => ok && modalEventDetail(id)); });
+  }
+
+  function modalNewContact() {
+    openModal(`
+      <h2>Nuevo contacto</h2>
+      <div class="form">
+        <div class="form-row">
+          <div class="field"><label for="cName">Nombre</label><input id="cName" name="name" required></div>
+          <div class="field"><label for="cEmail">Email</label><input id="cEmail" name="email" type="email"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="cRole">Cargo</label><input id="cRole" name="role"></div>
+          <div class="field"><label for="cCompany">Empresa</label><input id="cCompany" name="company"></div>
+        </div>
+        <div class="field"><label for="cTags">Etiquetas</label><input id="cTags" name="tags" placeholder="inversor, IA"></div>
+        <div class="field"><label for="cNotes">Notas</label><textarea id="cNotes" name="notes"></textarea></div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>`,
+    (fd) => {
+      const c = { name: fd.get('name'), email: fd.get('email'), role: fd.get('role') || '', company: fd.get('company') || '', tags: String(fd.get('tags')).split(',').map((s) => s.trim()).filter(Boolean), notes: fd.get('notes') };
+      act(async () => { const made = await Api.post('/contacts', c); state.selectedContact = made.id; state.mobileDetail = true; closeModal(); location.hash = '#contactos'; }, ['contacts'], 'Persona creada');
+    });
+  }
+
+  // One-click drafts per channel (see research/envio-enlace-cal.md). Nothing is sent without Ivan's click.
+  function chatButtons(c, small) {
+    const digits = (c.phone || '').replace(/\D/g, '');
+    const enc = encodeURIComponent;
+    const k = small ? 'btn small' : 'btn';
+    const b = [];
+    if (digits) b.push(`<a class="${k}" href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a>`);
+    if (digits) b.push(`<a class="${k}" href="https://t.me/+${digits}" target="_blank" rel="noopener">Telegram</a>`);
+    if (c.email) b.push(`<a class="${k}" href="https://mail.google.com/mail/u/0/#search/${enc(`from:${c.email} OR to:${c.email}`)}" target="_blank" rel="noopener">Gmail</a>`);
+    if (c.linkedin) b.push(`<a class="${k}" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>`);
+    return `<div class="chat-btns">${b.join('')}</div>`;
+  }
+  function sendButtons(c, text, subject) {
+    const digits = (c.phone || '').replace(/\D/g, '');
+    const enc = encodeURIComponent;
+    const b = [];
+    if (digits) b.push(`<a class="btn primary" href="https://wa.me/${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="WhatsApp">WhatsApp</a>`);
+    if (digits) b.push(`<a class="btn" href="https://t.me/+${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="Telegram">Telegram</a>`);
+    if (c.email) b.push(`<a class="btn" href="https://mail.google.com/mail/?view=cm&fs=1&to=${enc(c.email)}&su=${enc(subject)}&body=${enc(text)}" target="_blank" rel="noopener" data-sent="Gmail">Gmail</a>`);
+    if (c.linkedin) b.push(`<a class="btn" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener" data-sent="LinkedIn" data-copy-first>LinkedIn (copia y abre perfil)</a>`);
+    b.push('<button type="button" class="btn" data-copy-text>Copiar</button>');
+    return `<div class="actions">${b.join('')}</div><p class="note" style="margin:0">Se abre la app con el mensaje escrito. Tú pulsas Enviar.</p>`;
+  }
+  async function handleSendClick(e, c, getText) {
+    if (e.target.closest('[data-copy-text]') || e.target.closest('[data-copy-first]')) {
+      try { await navigator.clipboard.writeText(getText()); toast('Mensaje copiado'); } catch { toast('Selecciona y copia el texto'); }
+    }
+    const sent = e.target.closest('[data-sent]');
+    if (sent && c) {
+      act(() => Api.post('/interactions', { cid: c.id, date: iso(TODAY), ch: 'mensaje', text: `Mensaje abierto en ${sent.dataset.sent}.`, follow: iso(addDays(TODAY, 3)) }), ['interactions', 'contacts'],
+        `Anotado en el historial de ${c.name.split(' ')[0]}, con seguimiento en 3 días`);
+    }
+  }
+
+  // ---------- Borradores con Claude (opt-in; Ask y búsqueda siguen en local) ----------
+
+  function modalMeet(cid) {
+    let c = cid ? byId(cid) : null;
+    let typeId = 'cafe';
+    const draft = () => {
+      const t = CAL_TYPES.find((x) => x.id === typeId);
+      const free = [1, 2, 3, 4, 5].map((n) => iso(addDays(TODAY, n))).flatMap((d) => slotsFor(d).slice(0, 1).map((s) => `${fmt(d)} ${s}`)).slice(0, 3);
+      return `¡Hola ${c ? c.name.split(' ')[0] : ''}! ¿Te apetece un ${t.name.toLowerCase()} de ${t.min} min? Elige el hueco que mejor te venga: https://cal.com/tu-usuario/${t.slug}\nPor ejemplo tengo libre ${free.join(', ')}. Un abrazo, Ivan`;
+    };
+    const draw = () => {
+      const body = document.getElementById('meetBody');
+      if (!c) { body.innerHTML = ''; return; }
+      const text = draft();
+      body.innerHTML = `
+        <dl class="kv"><dt>Teléfono</dt><dd class="mono">${esc(c.phone || 'Sin teléfono')}</dd><dt>Email</dt><dd class="mono">${esc(c.email || 'Sin email')}</dd>${c.linkedin ? `<dt>LinkedIn</dt><dd class="mono">${esc(c.linkedin)}</dd>` : ''}</dl>
+        <div class="field"><label for="meetText">Mensaje (puedes editarlo)</label><textarea id="meetText" style="min-height:120px">${esc(text)}</textarea></div>
+        <p class="note" style="margin:0">El enlace es tu Cal.com en vivo: ${esc(c.name.split(' ')[0])} solo ve huecos libres, ya descontados tus eventos bloqueados.</p>
+        ${sendButtons(c, text, '¿Quedamos?')}
+        <div class="actions">${state.claudeOn ? '<button type="button" class="btn ghost small" data-claude-meet>Redactar con Claude</button>' : ''}</div>`;
+    };
+    openModal(`
+      <h2>Quedar con${c ? ' ' + esc(c.name) : '…'}</h2>
+      <div class="form">
+        <div class="form-row">
+          <div class="field"><label for="meetWho">Con quién</label><select id="meetWho"><option value="">Elige…</option>${contactOptions(c?.id)}</select></div>
+          <div class="field"><label for="meetType">Tipo</label><select id="meetType">${CAL_TYPES.map((t) => `<option value="${t.id}">${t.name} · ${t.min} min</option>`).join('')}</select></div>
+        </div>
+        <div id="meetBody" class="form"></div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button></div>`, () => {});
+    document.getElementById('meetWho').addEventListener('change', (e) => { c = e.target.value ? byId(Number(e.target.value)) : null; modalRoot.querySelector('h2').textContent = c ? `Quedar con ${c.name}` : 'Quedar con…'; draw(); });
+    document.getElementById('meetType').addEventListener('change', (e) => { typeId = e.target.value; draw(); });
+    document.getElementById('meetBody').addEventListener('click', (e) => {
+      if (e.target.closest('[data-claude-meet]')) { claudeAsk(`Quiero quedar con ${c.name}`); closeModal(); if (current() === 'preguntar') render(); else location.hash = '#preguntar'; return; }
+      handleSendClick(e, c, () => document.getElementById('meetText').value);
+    });
+    draw();
+  }
+
+  function modalNewProject() {
+    openModal(`
+      <h2>Nuevo proyecto</h2>
+      <div class="form">
+        <div class="field"><label for="pTitle">Nombre</label><input id="pTitle" name="title" required placeholder="Hackathon de primavera"></div>
+        <div class="field"><label for="pDesc">Descripción rápida</label><textarea id="pDesc" name="desc" placeholder="Qué es y qué tiene que pasar."></textarea></div>
+        <div class="field"><label for="pPeople">Personas</label><select id="pPeople" name="people" multiple size="5">${contactOptions(null)}</select><span class="note">Ctrl/Cmd + clic para elegir varias.</span></div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear proyecto</button></div>`,
+    (fd) => {
+      const p = { title: fd.get('title'), desc: fd.get('desc') || '', status: 'En marcha', people: fd.getAll('people').map((x) => ({ cid: Number(x), role: 'Colaborador' })) };
+      act(async () => { const made = await Api.post('/projects', p); state.selectedProject = made.id; state.mobileProject = true; closeModal(); location.hash = '#proyectos'; }, ['projects'], 'Proyecto creado');
+    });
+  }
+  function modalAddTask(pid, cid) {
+    const c = byId(cid);
+    openModal(`
+      <h2>Pendiente para ${esc(c.name)}</h2>
+      <div class="form">
+        <div class="field"><label for="tText">Qué le tienes que enviar</label><input id="tText" name="text" required placeholder="Presupuesto del catering"></div>
+        <div class="field"><label for="tDue">Para cuándo</label><input id="tDue" type="date" name="due" value="${iso(addDays(TODAY, 3))}"></div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Añadir</button></div>`,
+    (fd) => {
+      act(async () => { await Api.post(`/projects/${pid}/tasks`, { cid, text: fd.get('text'), st: 'pendiente', due: fd.get('due') }); closeModal(); }, ['projects'], 'Pendiente añadido');
+    });
+  }
+
+  // ---------- Events ----------
+  document.addEventListener('click', async (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const a = el.dataset.action;
+    const id = el.dataset.id;
+    if (a === 'close-modal') { if (e.target === el) closeModal(); return; }
+    if (a === 'open-contact' || a === 'select-contact') {
+      state.selectedContact = Number(id); state.mobileDetail = true; closeModal();
+      if (current() !== 'contactos') location.hash = '#contactos'; else render();
+    } else if (a === 'back-list') { state.mobileDetail = false; render(); }
+    else if (a === 'filter') { state.contactFilter = id; render(); }
+    else if (a === 'open-event') modalEventDetail(Number(id));
+    else if (a === 'log') modalLog(id ? Number(id) : state.selectedContact);
+    else if (a === 'new-event') modalEvent();
+    else if (a === 'meet') modalMeet(id ? Number(id) : null);
+    else if (a === 'claude-on') act(() => Api.patch('/settings', { claudeOn: true }), ['settings'], 'Claude activado');
+    else if (a === 'claude-off') act(() => Api.patch('/settings', { claudeOn: false }), ['settings'], 'Claude apagado');
+    else if (a === 'save-key') { const inp = document.getElementById(`key-${id}`); const key = inp.value.trim(); if (!key) { toast('Pega la clave primero'); return; } act(async () => { await Api.put(`/connections/${id}`, { apiKey: key }); inp.value = ''; }, ['connections', 'shell'], 'Clave guardada en tu ordenador'); }
+    else if (a === 'capture') { if (window.stolk?.capture) window.stolk.capture(); else toast('La captura solo funciona en la app de escritorio'); }
+    else if (a === 'panel') act(() => window.stolk.setPanel(id === 'on'), ['shell']);
+    else if (a === 'save-shortcut') { const v = document.getElementById('shortcutInput').value.trim(); act(async () => { const r = await window.stolk.setSettings({ shortcut: v }); if (!r.shortcutActive) toast('Este atajo no lo deja usar el sistema. Prueba "Crear atajo en GNOME".'); }, ['shell']); }
+    else if (a === 'gnome-shortcut') act(async () => { const r = await window.stolk.installGnomeShortcut(); toast(`Atajo de GNOME creado: ${r.binding}`); }, ['shell']);
+    else if (a === 'save-capture') saveCapture();
+    else if (a === 'close-capture') { state.capture = null; closeModal(); }
+    else if (a === 'open-project') { state.selectedProject = Number(id); state.mobileProject = true; if (current() !== 'proyectos') location.hash = '#proyectos'; else render(); }
+    else if (a === 'back-projects') { state.mobileProject = false; render(); }
+    else if (a === 'new-project') modalNewProject();
+    else if (a === 'add-task') { const [p, c] = id.split(':').map(Number); modalAddTask(p, c); }
+    else if (a === 'task-status') {
+      const [pid, tid] = id.split(':').map(Number);
+      const t = state.projects.find((p) => p.id === pid).tasks.find((x) => x.id === tid);
+      const st = TASK_ST[(TASK_ST.indexOf(t.st) + 1) % TASK_ST.length];
+      act(() => Api.patch(`/tasks/${tid}`, { st }), ['projects'], `Marcado como ${st}`);
+    }
+    else if (a === 'invite') {
+      const [eid, cid] = id.split(':').map(Number);
+      act(() => Api.put(`/events/${eid}/guests/${cid}`, { st: 'invitado' }), ['events'], `${byId(cid).name.split(' ')[0]} invitado`).then((ok) => ok && modalEventDetail(eid));
+    }
+    else if (a === 'new-contact') modalNewContact();
+    else if (a === 'month') { const n = Number(id); state.calMonth = n === 0 ? new Date(TODAY.getFullYear(), TODAY.getMonth(), 1) : new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + n, 1); act(() => {}, ['calendar']); }
+    else if (a === 'gcal') { const g = state.gcal.find((x) => x.id === id); toast(`${g.title} · ${g.start}–${g.end}${g.place ? ' · ' + g.place : ''} (Google Calendar)`); }
+    else if (a === 'theme') { window.stolkTheme.set(id); render(); }
+    else if (a === 'gcal-on') act(async () => { const { authUrl } = await Api.post('/connections/gcal/start'); openExternal(authUrl); }, [], 'Termina de conectar Google en el navegador y vuelve aquí');
+    else if (a === 'gcal-off') act(() => Api.del('/connections/gcal'), ['connections', 'calendar', 'today'], 'Google Calendar desconectado');
+    else if (a === 'sync') act(() => Api.post('/sync'), ['connections', 'calendar', 'today', 'contacts'], 'Sincronizado');
+    else if (a === 'disconnect') act(() => Api.del('/connections/calcom'), ['connections'], 'Cal.com desconectado');
+    else if (a === 'copy') {
+      try { await navigator.clipboard.writeText('https://' + id); toast('Enlace copiado'); }
+      catch { toast('https://' + id); }
+    }
+  });
+  document.addEventListener('click', (e) => {
+    const box = e.target.closest('#personSend, #askDraft');
+    if (!box) return;
+    const ta = box.querySelector('textarea');
+    const link = e.target.closest('a[href][data-sent]');
+    if (link) link.href = link.href.replace(/([?&](?:text|body)=)[^&]*/, (m, k) => k + encodeURIComponent(ta.value));
+    handleSendClick(e, byId(Number(box.dataset.cid || state.selectedContact)), () => ta.value);
+  });
+  document.addEventListener('change', (e) => {
+  });
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'contactSearch') { state.contactQuery = e.target.value; document.getElementById('contactList').innerHTML = contactListHtml(); }
+  });
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'addPerson' && e.target.value) {
+      const p = state.projects.find((x) => x.id === Number(e.target.dataset.project));
+      act(() => Api.put(`/projects/${p.id}/people/${e.target.value}`, { role: 'Colaborador' }), ['projects'], 'Persona añadida al proyecto');
+    }
+  });
+  document.addEventListener('change', (e) => { if (e.target.id === 'tPanel') act(() => window.stolk.setPanel(e.target.checked), ['shell']); });
+  document.addEventListener('change', (e) => { if (e.target.id === 'tBlock') act(() => Api.patch('/settings', { blockEvents: e.target.checked }), ['settings'], e.target.checked ? 'Tus eventos bloquearán Cal.com' : 'Tus eventos ya no bloquean Cal.com'); });
+  document.addEventListener('submit', (e) => {
+    if (e.target.id !== 'askForm') return;
+    e.preventDefault();
+    const q = document.getElementById('askInput').value.trim();
+    if (q) claudeAsk(q);
+  });
+
+  window.stolk?.onCapture?.((r) => onCapture(r));
+  async function start() {
+    try { await load(); state.ready = true; render(); }
+    catch (err) { main.innerHTML = `<div class="empty" style="text-align:left"><h1>Stölk no encuentra su servidor local</h1><p class="sub">${esc(err.message)}</p></div>`; }
+  }
+  if (await Api.ready()) start();
+  else { main.innerHTML = '<p class="muted">Arrancando…</p>'; window.stolk?.onApiReady?.(start); }
+})();
+</script>
+</body>
+</html>

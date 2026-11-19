@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'self'">
+<title>Stölk: elige a la persona</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; cursor: crosshair; user-select: none; font: 14px/1.4 system-ui, sans-serif; }
+  #shot { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+  #dim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); }
+  #box { position: fixed; display: none; outline: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .45); background: transparent; }
+  #hint { position: fixed; left: 50%; top: 24px; transform: translateX(-50%); background: #111; color: #fff; padding: 8px 14px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<img id="shot" alt="">
+<div id="dim"></div>
+<div id="box"></div>
+<div id="hint">Arrastra un recuadro sobre la persona. Esc para cancelar.</div>
+<script src="capture.js"></script>
+</body>
+</html>
