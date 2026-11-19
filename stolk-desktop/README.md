@@ -34,6 +34,7 @@ En GNOME con Wayland las apps no pueden registrar atajos globales. Usa el botón
 cd server && npm ci && npm run build      # API local
 cd ../stolk-desktop && npm ci
 npm test                                  # pruebas unitarias
+node test/live.mjs ../server/dist         # la pantalla contra el servidor real
 npm start                                 # abre la app (usa ../server/dist)
 ```
 

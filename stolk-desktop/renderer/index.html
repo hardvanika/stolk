@@ -377,14 +377,13 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (want('calendar')) {
       const m = state.calMonth;
       const from = iso(addDays(new Date(m.getFullYear(), m.getMonth(), 1), -7)), to = iso(addDays(new Date(m.getFullYear(), m.getMonth() + 1, 0), 14));
-      jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; if (v.events) state.events = mergeById(state.events, v.events); }));
+      jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; /* events come complete from /events; /calendar's are a slim copy */ }));
     }
     if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
     if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.lastSync = v.calcom?.lastSync || v.gcal?.lastSync || null; state.claudeConnected = !!v.claude?.connected; }));
     if (want('shell') && window.stolk?.settings) jobs.push(window.stolk.settings().then((v) => { state.shell = v; }));
     await Promise.all(jobs);
   }
-  const mergeById = (a, b) => { const m = new Map(a.map((x) => [x.id, x])); for (const x of b) m.set(x.id, x); return [...m.values()]; };
   // Runs an action against the server, reloads what it touched, re-renders, and reports errors as a toast.
   async function act(fn, reload = [], okMsg) {
     try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) toast(okMsg); return true; }
@@ -863,7 +862,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
   function saveCapture(fd) {
     const card = Object.fromEntries(CARD_FIELDS.map(([k]) => [k, String(fd.get(k) || '').trim()]));
-    const notes = String(fd.get('notes') || '').trim();
+    // Contacts have no website field in the API, so the website rides along in the notes.
+    const website = card.website; delete card.website;
+    const notes = [String(fd.get('notes') || '').trim(), website && `Web: ${website}`].filter(Boolean).join('\n');
     const mergeId = Number(fd.get('merge')) || null;
     act(async () => {
       let id = mergeId;
