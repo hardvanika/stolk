@@ -57,6 +57,26 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.click('#modalForm button[type=submit]');
   await page.waitForTimeout(250);
   check((await page.evaluate(() => window.STOLK_CALLS)).some((c) => c.startsWith('PATCH /contacts/2')), `${label}: una captura repetida se fusiona con la ficha existente`);
+  // Sync at startup, chat buttons log through /contacts/:id/opened, model picker in Ajustes.
+  const all = await page.evaluate(() => window.STOLK_CALLS);
+  check(all.includes('POST /sync'), `${label}: sincroniza al arrancar`);
+  await page.evaluate(() => { location.hash = 'integraciones'; });
+  await page.waitForSelector('#claudeModel');
+  await page.selectOption('#claudeModel', 'claude-haiku-5-5');
+  await page.waitForTimeout(200);
+  check((await page.evaluate(() => window.STOLK_CALLS)).includes('PATCH /settings'), `${label}: el modelo de Claude se cambia en Ajustes`);
+  await page.click('button[data-action=sync]');
+  await page.waitForTimeout(250);
+  check((await page.evaluate(() => window.STOLK_CALLS)).filter((c) => c === 'POST /sync').length >= 2, `${label}: el botón Sincronizar llama al servidor`);
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => document.querySelector('#personSend a[data-sent]')?.addEventListener('click', (e) => e.preventDefault(), { once: true }));
+  const chat = page.locator('#personSend a[data-sent]').first();
+  if (await chat.count()) {
+    await chat.click();
+    await page.waitForTimeout(250);
+    check((await page.evaluate(() => window.STOLK_CALLS)).some((c) => /^POST \/contacts\/\d+\/opened$/.test(c)), `${label}: abrir un chat queda en el historial`);
+  } else check(false, `${label}: hay botones de chat en la ficha`);
   await page.close();
 }
 await browser.close();

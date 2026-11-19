@@ -2,7 +2,7 @@
 // Loaded only by the UI test (test/ui.mjs); never shipped.
 (() => {
   const S = JSON.parse(JSON.stringify(window.STOLK_SAMPLE));
-  S.settings = { blockEvents: true, claudeOn: true, theme: 'claro', calTypes: [] };
+  S.settings = { blockEvents: true, claudeOn: true, theme: 'claro', calTypes: [], claudeModel: 'claude-opus-5-5', captureShortcut: 'Ctrl+Shift+S' };
   S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: true, lastSync: '18:02' }, claude: { connected: true } };
   let next = 5000;
   const today = window.STOLK_TODAY || new Date().toISOString().slice(0, 10);
@@ -32,6 +32,8 @@
       ...S.gcal.filter((g) => g.date === today).map((g) => ({ src: 'gcal', start: g.start, end: g.end, title: g.title, sub: g.place })),
     ].sort((a, b) => a.start.localeCompare(b.start)))],
     ['GET', /^\/calendar\?/, () => ok({ events: S.events, bookings: S.bookings, gcal: S.gcal, follows: [] })],
+    ['POST', /^\/sync$/, () => ok({ lastSync: '2026-11-19T18:30:00', calcom: { ok: true, bookings: 2, blocks: 1 }, gcal: { ok: true, events: 3 }, gmail: { ok: false, skipped: 'not connected' } })],
+    ['POST', /^\/contacts\/(\d+)\/opened$/, (m, b) => { const i = { id: next++, cid: +m[1], date: today, ch: 'mensaje', text: `Chat abierto en ${b.channel}` }; S.interactions.push(i); return ok(i, 201); }],
     ['GET', /^\/settings$/, () => ok(S.settings)],
     ['PATCH', /^\/settings$/, (m, b) => ok(Object.assign(S.settings, b))],
     ['GET', /^\/connections$/, () => ok(S.connections)],

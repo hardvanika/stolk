@@ -88,6 +88,27 @@ try {
   const okPatch = await fetch(`http://127.0.0.1:${port}/settings`, { method: 'PATCH', headers: h, body: JSON.stringify({ captureShortcut: 'Super+K' }) });
   const badPatch = await fetch(`http://127.0.0.1:${port}/settings`, { method: 'PATCH', headers: h, body: JSON.stringify({ captureShortcut: 'Banana+' }) });
   check(okPatch.status === 200 && badPatch.status === 400, 'el servidor guarda un atajo válido y rechaza uno roto');
+  const sync = await (await fetch(`http://127.0.0.1:${port}/sync`, { method: 'POST', headers: h })).json();
+  check(['calcom', 'gcal', 'gmail'].every((k) => sync[k] && (sync[k].ok || sync[k].skipped)), 'POST /sync responde por servicio (sin conexiones, todo skipped)');
+  const conn = await (await fetch(`http://127.0.0.1:${port}/connections`, { headers: h })).json();
+  check('gmail' in conn, '/connections incluye gmail');
+  const st2 = await (await fetch(`http://127.0.0.1:${port}/settings`, { method: 'PATCH', headers: h, body: JSON.stringify({ claudeModel: 'claude-haiku-5-5' }) })).json();
+  check(st2.claudeModel === 'claude-haiku-5-5', 'el modelo de Claude se guarda');
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelectorAll('#personSend a[data-sent]').forEach((a) => a.addEventListener('click', (e) => e.preventDefault())));
+  const before = failed.length;
+  const chat = page.locator('#personSend a[data-sent]').first();
+  check(await chat.count() > 0, 'la ficha tiene botones de chat');
+  if (await chat.count()) { await chat.click(); await page.waitForTimeout(500); }
+  check(failed.length === before && (await page.evaluate(() => window.STOLK_CALLS)).some((c) => /\/opened$/.test(c)), 'abrir un chat se anota con /contacts/:id/opened');
+  await page.evaluate(() => { location.hash = 'preguntar'; });
+  await page.waitForSelector('#askInput');
+  await page.fill('#askInput', '¿Con quién hablé ayer?');
+  await page.click('#askForm button[type=submit]');
+  await page.waitForTimeout(800);
+  const askText = await page.textContent('main');
+  check(/Claude/.test(askText) && !/Error 4/.test(askText), 'Preguntar sin clave muestra el mensaje del servidor');
   await page.screenshot({ path: path.join(home, 'live.png') });
 } finally {
   await browser.close();

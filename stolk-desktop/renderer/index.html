@@ -169,6 +169,9 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .guest-row { display: flex; align-items: center; gap: 4px; }
 .guest-row .avatar { width: 26px; height: 26px; font-size: 10.5px; border: 2px solid var(--surface); margin-left: -6px; }
 .guest-row .avatar:first-child { margin-left: 0; }
+.spinner { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid var(--line); border-top-color: currentColor; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 .cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
 
 .cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -350,7 +353,11 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   const state = {
     calConnected: false,
     gcalConnected: false,
+    gmailConnected: false,
+    conn: {},
     lastSync: null,
+    syncing: false,
+    claudeModel: 'claude-opus-5-5',
     blockEvents: true,
     contacts: [], events: [], interactions: [], bookings: [], gcal: [], relations: [], projects: [], today: [],
     claudeOn: false,
@@ -379,8 +386,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       const from = iso(addDays(new Date(m.getFullYear(), m.getMonth(), 1), -7)), to = iso(addDays(new Date(m.getFullYear(), m.getMonth() + 1, 0), 14));
       jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; /* events come complete from /events; /calendar's are a slim copy */ }));
     }
-    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
-    if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.lastSync = v.calcom?.lastSync || v.gcal?.lastSync || null; state.claudeConnected = !!v.claude?.connected; }));
+    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
+    if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.conn = v; state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.gmailConnected = !!v.gmail?.connected; state.lastSync = [v.calcom?.lastSync, v.gcal?.lastSync, v.gmail?.lastSync].filter(Boolean).sort().pop() || null; state.claudeConnected = !!v.claude?.connected; }));
     if (want('shell') && window.stolk?.settings) jobs.push(window.stolk.settings().then((v) => { state.shell = v; }));
     await Promise.all(jobs);
   }
@@ -388,6 +395,22 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   async function act(fn, reload = [], okMsg) {
     try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) toast(okMsg); return true; }
     catch (err) { toast(err.message || 'Algo ha fallado'); return false; }
+  }
+
+  // Cal.com, Google Calendar and Gmail: at startup, every 15 minutes and from "Sincronizar".
+  const SYNC_NAMES = { calcom: 'Cal.com', gcal: 'Google Calendar', gmail: 'Gmail' };
+  async function syncNow(manual) {
+    if (state.syncing) return;
+    state.syncing = true; if (manual) render();
+    try {
+      const r = await Api.post('/sync');
+      const failed = Object.keys(SYNC_NAMES).filter((k) => r[k] && !r[k].ok && !r[k].skipped);
+      const done = Object.keys(SYNC_NAMES).filter((k) => r[k]?.ok);
+      await load('connections', 'calendar', 'today', 'contacts', 'interactions', 'events');
+      if (failed.length) toast(failed.map((k) => `${SYNC_NAMES[k]}: ${r[k].error || 'error'}`).join(' · '));
+      else if (manual) toast(done.length ? `Sincronizado: ${done.map((k) => SYNC_NAMES[k]).join(', ')}` : 'No hay nada conectado que sincronizar');
+    } catch (err) { if (manual) toast(err.message); }
+    finally { state.syncing = false; render(); }
   }
 
   const byId = (id) => state.contacts.find((c) => c.id === id);
@@ -648,7 +671,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="guest-row">${e.guests.slice(0, 6).map((g) => `<span class="avatar" title="${esc(byId(g.cid).name)}">${initials(byId(g.cid).name)}</span>`).join('')}</div>
           <span class="muted" style="font-size:13.5px">${confirmed}/${e.guests.length} ${e.status === 'hecho' ? 'asistieron' : 'confirmados'}</span>
         </div>
-        ${e.status === 'planeado' ? `<div class="cal-sync">${state.calConnected && state.blockEvents ? `<span class="led"></span>Bloqueado en Cal.com · ${fmt(e.date)} ${e.start}–${e.end}` : '<span class="led off"></span>Sin bloquear en Cal.com'}</div>` : ''}
+        ${e.calBlock?.error ? `<div class="cal-sync" role="alert"><span class="led off"></span>No se pudo bloquear en Cal.com: ${esc(e.calBlock.error)}. Se reintenta al sincronizar.</div>` : e.status === 'planeado' ? `<div class="cal-sync">${state.calConnected && state.blockEvents && e.calBlock?.synced ? `<span class="led"></span>Bloqueado en Cal.com · ${fmt(e.date)} ${e.start}–${e.end}` : state.calConnected && state.blockEvents ? '<span class="led off"></span>Pendiente de bloquear en Cal.com' : '<span class="led off"></span>Sin bloquear en Cal.com'}</div>` : ''}
         <div class="actions"><button class="btn small" data-action="open-event" data-id="${e.id}">Ver invitados</button></div>
       </article>`;
   }
@@ -726,7 +749,13 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     render();
     try {
       const r = await Api.post('/ask', { question: q });
-      state.lastAsk = { q, answer: r.answer, cites: (r.cites || []).filter((x) => x.type === 'contact').map((x) => byId(x.id)).filter(Boolean), draft: r.draft || null };
+      const cites = (r.cites || []).map((x) => {
+        if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, meta: [c.role, c.company].filter(Boolean).join(' · '), badge: initials(c.name) }; }
+        if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, meta: `Evento · ${fmt(e.date)}`, badge: 'Ev' }; }
+        if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, meta: 'Proyecto', badge: 'Pr' }; }
+        return null;
+      }).filter(Boolean);
+      state.lastAsk = { q, answer: r.answer, cites, draft: r.draft || null, model: r.model };
     } catch (err) {
       state.lastAsk = { q, error: err.message };
     }
@@ -740,10 +769,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <div class="view-head"><div><h1>Preguntar</h1></div></div>
       <form class="ask-box" id="askForm">
         <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude">${esc(a?.q || '')}</textarea>
-        <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit">Enviar</button></div>
+        <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit"${a?.loading ? ' disabled' : ''}>Enviar</button></div>
       </form>
-      ${a?.loading ? '<p class="muted" style="margin-top:20px">Pensando…</p>' : ''}
-      ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|key|401/i.test(a.error) ? '<p class="note">Pon tu clave de Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
+      ${a?.loading ? '<p class="muted ask-loading" style="margin-top:20px" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</p>' : ''}
+      ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|activ|conect/i.test(a.error) ? '<p class="note">Revisa Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
       ${a?.draft && dc ? `
         <section class="panel panel-pad form" style="margin-top:20px" id="askDraft" data-cid="${dc.id}">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h2>Mensaje para ${esc(dc.name)}</h2><span class="tag cal">Claude</span></div>
@@ -753,9 +782,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       ${a?.answer ? `
         <section class="panel panel-pad" style="margin-top:${a.draft ? 14 : 20}px"><div class="answer" style="white-space:pre-wrap">${esc(a.answer)}</div></section>
         ${a.cites.length ? `<ul class="list panel" style="margin-top:14px">${a.cites.map((c, i) => `
-          <li class="row clickable" data-action="open-contact" data-id="${c.id}">
-            <div class="avatar">${initials(c.name)}</div>
-            <div style="min-width:0"><div class="title"><span class="cite">[${i + 1}]</span> ${esc(c.name)}</div><div class="meta">${esc([c.role, c.company].filter(Boolean).join(' · '))}</div></div>
+          <li class="row clickable" data-action="${c.action}" data-id="${c.id}">
+            <div class="avatar">${esc(c.badge)}</div>
+            <div style="min-width:0"><div class="title"><span class="cite">[${i + 1}]</span> ${esc(c.title)}</div><div class="meta">${esc(c.meta)}</div></div>
             <span class="muted">›</span>
           </li>`).join('')}</ul>` : ''}` : ''}
       </div>`;
@@ -782,7 +811,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
       </section>
       <section class="settings-sec">
-        <header><h2>Conexiones</h2><p class="note">Lo único que sale de tu ordenador. Tus datos se quedan en la base local.</p></header>
+        <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Conexiones</h2><p class="note">Lo único que sale de tu ordenador. Tus datos se quedan en la base local. Se sincroniza al abrir Stölk y cada 15 minutos.</p></div>
+          <div style="text-align:right"><button class="btn" data-action="sync"${state.syncing ? ' disabled' : ''}>${state.syncing ? '<span class="spinner" aria-hidden="true"></span>Sincronizando…' : 'Sincronizar'}</button><div class="note mono" style="margin-top:4px">Última: ${esc(state.lastSync ? String(state.lastSync).replace('T', ' ').slice(0, 16) : 'nunca')}</div></div></header>
       <div class="stack">
         <section class="panel panel-pad form">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Cal.com</h2>
@@ -790,17 +820,22 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           ${state.calConnected ? '' : `<div class="field"><label for="key-calcom">Clave API de Cal.com</label>
             <div style="display:flex;gap:8px"><input id="key-calcom" type="password" placeholder="cal_live_…" autocomplete="off"><button class="btn primary" data-action="save-key" data-id="calcom">Conectar</button></div></div>`}
           <p class="note" style="margin:0">Se guarda solo en <span class="mono">~/.stolk/.env</span> en tu ordenador y nunca se sube a GitHub. La creas en Cal.com → Settings → Developer → API Keys.</p>
-          ${state.calConnected ? `<div class="actions"><button class="btn" data-action="sync">Sincronizar ahora</button><button class="btn danger" data-action="disconnect">Desconectar</button></div>
-          <dl class="kv"><dt>Última sincronización</dt><dd class="mono">${esc(state.lastSync || 'nunca')}</dd></dl>` : ''}
+          ${state.conn.calcom?.error ? `<p class="note" role="alert" style="margin:0">Último error: ${esc(state.conn.calcom.error)}</p>` : ''}
+          ${state.calConnected ? `<div class="actions"><button class="btn danger" data-action="disconnect">Desconectar</button></div>` : ''}
         </section>
         <section class="panel panel-pad form">
           <h2>Qué se sincroniza</h2>
           <label class="toggle"><input type="checkbox" id="tBlock" ${state.blockEvents ? 'checked' : ''}><span><b>Bloquear mis eventos en Cal.com</b><br><span class="note">Cada evento que creas en Stölk reserva su franja en un tipo de evento oculto, "Bloqueado (Stölk)". Si lo mueves o cancelas, se actualiza solo.</span></span></label>
         </section>
         <section class="panel panel-pad form">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Google Calendar</h2><span class="tag ${state.gcalConnected ? '' : 'plain'}">${state.gcalConnected ? 'Conectado' : 'Sin conectar'}</span></div>
-          <p class="note" style="margin:0">Solo lectura. Stölk enseña tus citas de Google en Hoy y en el Calendario. Cal.com ya mira este mismo calendario para no darte huecos ocupados.</p>
-          <div class="actions">${state.gcalConnected ? '<button class="btn danger" data-action="gcal-off">Desconectar</button>' : '<button class="btn primary" data-action="gcal-on">Conectar con Google</button>'}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Google Calendar y Gmail</h2><span class="tag ${state.gcalConnected ? '' : 'plain'}">${state.gcalConnected ? 'Conectado' : 'Sin conectar'}</span></div>
+          <p class="note" style="margin:0">Solo lectura. Tus citas de Google salen en Hoy y en el Calendario. De Gmail solo se leen remitente, destinatario y fecha, para anotar en el historial cuándo hablaste con cada persona; el contenido de los correos no se lee.</p>
+          ${state.gcalConnected ? `<dl class="kv"><dt>Calendario</dt><dd>${state.conn.gcal?.error ? esc(state.conn.gcal.error) : 'Conectado'}</dd><dt>Gmail</dt><dd>${state.gmailConnected ? (state.conn.gmail?.error ? esc(state.conn.gmail.error) : 'Conectado') : 'Sin conectar'}</dd></dl>
+          <div class="actions"><button class="btn danger" data-action="gcal-off">Desconectar</button></div>` : `
+          <div class="field"><label for="g-client-id">Client ID de Google <span class="note">(solo la primera vez)</span></label><input id="g-client-id" autocomplete="off" placeholder="….apps.googleusercontent.com"></div>
+          <div class="field"><label for="g-client-secret">Client secret</label><input id="g-client-secret" type="password" autocomplete="off"></div>
+          <p class="note" style="margin:0">Los creas en Google Cloud Console → APIs y servicios → Credenciales (app de escritorio). Se guardan solo en <span class="mono">~/.stolk/.env</span>.</p>
+          <div class="actions"><button class="btn primary" data-action="gcal-on">Conectar con Google</button></div>`}
         </section>
         <section class="panel panel-pad form">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Claude</h2><span class="tag ${state.claudeOn ? '' : 'plain'}">${state.claudeOn ? 'Activo' : 'Apagado'}</span></div>
@@ -808,7 +843,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="field"><label for="key-claude">Clave de Claude ${state.claudeConnected ? '(guardada)' : ''}</label>
             <div style="display:flex;gap:8px"><input id="key-claude" type="password" placeholder="${state.claudeConnected ? 'Pega otra para cambiarla' : 'sk-ant-…'}" autocomplete="off"><button class="btn" data-action="save-key" data-id="claude">Guardar</button></div>
             <span class="note">Se guarda solo en <span class="mono">~/.stolk/.env</span> (ANTHROPIC_API_KEY).</span></div>
-          <dl class="kv"><dt>Modelo</dt><dd class="mono">claude-opus-5-5</dd></dl>
+          <div class="field"><label for="claudeModel">Modelo</label><select id="claudeModel" style="max-width:280px">${[['claude-opus-5-5', 'Opus 5.5 (mejor respuesta)'], ['claude-sonnet-5-5', 'Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Haiku 5.5 (más rápido y barato)']].map(([v, l]) => `<option value="${v}"${state.claudeModel === v ? ' selected' : ''}>${l}</option>`).join('')}</select><span class="note">Para Preguntar. Leer capturas usa siempre Opus 5.5.</span></div>
           <div class="actions">${state.claudeOn ? '<button class="btn danger" data-action="claude-off">Apagar</button>' : '<button class="btn primary" data-action="claude-on">Activar</button>'}</div>
         </section>
         <section class="panel panel-pad">
@@ -1032,8 +1067,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     }
     const sent = e.target.closest('[data-sent]');
     if (sent && c) {
-      act(() => Api.post('/interactions', { cid: c.id, date: iso(TODAY), ch: 'mensaje', text: `Mensaje abierto en ${sent.dataset.sent}.`, follow: iso(addDays(TODAY, 3)) }), ['interactions', 'contacts'],
-        `Anotado en el historial de ${c.name.split(' ')[0]}, con seguimiento en 3 días`);
+      act(() => Api.post(`/contacts/${c.id}/opened`, { channel: sent.dataset.sent.toLowerCase() }), ['interactions', 'contacts'],
+        `Anotado en el historial de ${c.name.split(' ')[0]}`);
     }
   }
 
@@ -1148,9 +1183,12 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'month') { const n = Number(id); state.calMonth = n === 0 ? new Date(TODAY.getFullYear(), TODAY.getMonth(), 1) : new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + n, 1); act(() => {}, ['calendar']); }
     else if (a === 'gcal') { const g = state.gcal.find((x) => x.id === id); toast(`${g.title} · ${g.start}–${g.end}${g.place ? ' · ' + g.place : ''} (Google Calendar)`); }
     else if (a === 'theme') { window.stolkTheme.set(id); render(); }
-    else if (a === 'gcal-on') act(async () => { const { authUrl } = await Api.post('/connections/gcal/start'); openExternal(authUrl); }, [], 'Termina de conectar Google en el navegador y vuelve aquí');
+    else if (a === 'gcal-on') {
+      const clientId = document.getElementById('g-client-id')?.value.trim(), clientSecret = document.getElementById('g-client-secret')?.value.trim();
+      act(async () => { const { authUrl } = await Api.post('/connections/gcal/start', clientId || clientSecret ? { clientId, clientSecret } : {}); openExternal(authUrl); }, [], 'Termina de conectar Google en el navegador y vuelve aquí');
+    }
     else if (a === 'gcal-off') act(() => Api.del('/connections/gcal'), ['connections', 'calendar', 'today'], 'Google Calendar desconectado');
-    else if (a === 'sync') act(() => Api.post('/sync'), ['connections', 'calendar', 'today', 'contacts'], 'Sincronizado');
+    else if (a === 'sync') syncNow(true);
     else if (a === 'disconnect') act(() => Api.del('/connections/calcom'), ['connections'], 'Cal.com desconectado');
     else if (a === 'copy') {
       try { await navigator.clipboard.writeText('https://' + id); toast('Enlace copiado'); }
@@ -1176,6 +1214,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       act(() => Api.put(`/projects/${p.id}/people/${e.target.value}`, { role: 'Colaborador' }), ['projects'], 'Persona añadida al proyecto');
     }
   });
+  document.addEventListener('change', (e) => { if (e.target.id === 'claudeModel') act(() => Api.patch('/settings', { claudeModel: e.target.value }), ['settings'], 'Modelo de Claude cambiado'); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tPanel') act(() => window.stolk.setPanel(e.target.checked), ['shell']); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tBlock') act(() => Api.patch('/settings', { blockEvents: e.target.checked }), ['settings'], e.target.checked ? 'Tus eventos bloquearán Cal.com' : 'Tus eventos ya no bloquean Cal.com'); });
   document.addEventListener('submit', (e) => {
@@ -1187,9 +1226,13 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
 
   window.stolk?.onCapture?.((r) => onCapture(r));
   async function start() {
-    try { await load(); state.ready = true; render(); }
+    try { await load(); state.ready = true; render(); startSync(); }
     catch (err) { main.innerHTML = `<div class="empty" style="text-align:left"><h1>Stölk no encuentra su servidor local</h1><p class="sub">${esc(err.message)}</p></div>`; }
   }
+  let syncTimer = null;
+  const startSync = () => { if (syncTimer) return; syncNow(false); syncTimer = setInterval(() => syncNow(false), 15 * 60 * 1000); };
+  // Coming back from the Google sign-in in the browser: refresh the connection state.
+  window.addEventListener('focus', () => { if (state.ready) load('connections').then(render).catch(() => {}); });
   if (await Api.ready()) start();
   else { main.innerHTML = '<p class="muted">Arrancando…</p>'; window.stolk?.onApiReady?.(start); }
 })();
