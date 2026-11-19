@@ -1,0 +1,21 @@
+{
+  "name": "@stolk/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stölk local API: SQLite on disk, HTTP on 127.0.0.1 with a bearer token.",
+  "type": "module",
+  "main": "dist/main.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/postbuild.mjs",
+    "start": "node --disable-warning=ExperimentalWarning dist/main.js",
+    "dev": "npm run build && npm start",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "seed": "node --disable-warning=ExperimentalWarning dist/seed-cli.js",
+    "test": "tsc -p tsconfig.test.json && node --disable-warning=ExperimentalWarning --test dist-test/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}
