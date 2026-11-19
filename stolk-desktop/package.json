@@ -1,0 +1,64 @@
+{
+  "name": "stolk-desktop",
+  "productName": "Stölk",
+  "version": "0.1.0",
+  "description": "Stölk: personal networking CRM for your desktop.",
+  "author": "hardvanika",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.mjs",
+    "dist": "electron-builder --linux AppImage deb"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.10.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.hardvanika.stolk",
+    "productName": "Stölk",
+    "executableName": "stolk",
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "src/**",
+      "renderer/**",
+      "build/icon.png",
+      "build/tray.png",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "build/icon.png",
+      "synopsis": "Recuerda a todas las personas que conoces"
+    },
+    "deb": {
+      "maintainer": "hardvanika <noreply@users.noreply.github.com>"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "hardvanika",
+      "repo": "stolk",
+      "releaseType": "release"
+    },
+    "extraResources": [
+      {
+        "from": "../server/dist",
+        "to": "server"
+      }
+    ],
+    "artifactName": "stolk-${version}-${arch}.${ext}"
+  },
+  "homepage": "https://github.com/hardvanika/stolk"
+}

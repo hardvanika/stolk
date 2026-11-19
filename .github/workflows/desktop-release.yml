@@ -1,0 +1,30 @@
+name: Desktop release
+
+# Push a tag like v0.1.0 to build the Linux app and attach it to a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the local server
+        working-directory: server
+        run: npm ci && npm run build
+      - name: Install and test the desktop app
+        working-directory: stolk-desktop
+        run: npm ci && npm test
+      - name: Build AppImage and .deb and publish them
+        working-directory: stolk-desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --linux AppImage deb --publish always
