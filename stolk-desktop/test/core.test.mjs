@@ -67,3 +67,15 @@ test('AppImage desktop entry points at the AppImage and matches the window class
   assert.equal(installDesktopEntry({ execPath: '/a.AppImage', iconPng: png, dataHome: home }), false);
   assert.ok(fs.existsSync(path.join(home, 'icons/hicolor/512x512/apps/stolk.png')));
 });
+
+test('portal screenshot reads the returned file, deletes it, and maps displays', async () => {
+  const { portalScreenshot, displayRegion } = await import('../src/portal-screenshot.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stolk-shot-'));
+  const f = path.join(dir, 'Captura de pantalla.png'); fs.writeFileSync(f, Buffer.from([9, 9]));
+  const png = await portalScreenshot({ run: (cmd, args, o, cb) => cb(null, `file://${encodeURI(f)}\n`, '') });
+  assert.deepEqual([...png], [9, 9]);
+  assert.equal(fs.existsSync(f), false);
+  await assert.rejects(portalScreenshot({ run: (c, a, o, cb) => cb(new Error('x'), '', 'portal response 1') }), /portal response 1/);
+  const ds = [{ bounds: { x: 0, y: 0, width: 1920, height: 1080 } }, { bounds: { x: 1920, y: 0, width: 1280, height: 1024 } }];
+  assert.deepEqual(displayRegion(ds, ds[1], 6400, 2160), { x: 3840, y: 0, width: 2560, height: 2048 });
+});

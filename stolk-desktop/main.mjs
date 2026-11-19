@@ -11,6 +11,7 @@ import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
 import { installDesktopEntry } from './src/desktop-entry.mjs';
+import { portalScreenshot, displayRegion } from './src/portal-screenshot.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
 
@@ -182,6 +183,27 @@ function registerShortcut() {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// On Wayland, the screenshot portal (non-interactive) avoids GNOME's "Share screen" dialog on every capture.
+// desktopCapturer stays as the fallback (X11, or a desktop without the portal).
+async function grabScreen(display) {
+  if (isWayland()) {
+    try {
+      const img = nativeImage.createFromBuffer(await portalScreenshot());
+      if (!img.isEmpty()) {
+        const { width, height } = img.getSize();
+        const all = screen.getAllDisplays();
+        return all.length > 1 ? img.crop(displayRegion(all, display, width, height)) : img;
+      }
+    } catch (err) { console.error(err.message); }
+  }
+  const sources = await desktopCapturer.getSources({
+    types: ['screen'],
+    thumbnailSize: { width: Math.round(display.size.width * display.scaleFactor), height: Math.round(display.size.height * display.scaleFactor) },
+  });
+  const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
+  if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla. En Wayland, acepta el permiso de captura de GNOME.');
+  return src.thumbnail;
+}
 async function startCapture() {
   if (capturing || !win) return;
   capturing = true;
@@ -189,17 +211,12 @@ async function startCapture() {
   try {
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     if (wasVisible) { win.hide(); await wait(250); } // keep Stölk itself out of the shot
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: Math.round(display.size.width * display.scaleFactor), height: Math.round(display.size.height * display.scaleFactor) },
-    });
-    const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
-    if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla. En Wayland, acepta el permiso de captura de GNOME.');
-    const rect = await pickArea(display, src.thumbnail);
+    const shot = await grabScreen(display);
+    const rect = await pickArea(display, shot);
     showWindow();
     if (!rect) return;
-    const size = src.thumbnail.getSize();
-    let crop = src.thumbnail.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
+    const size = shot.getSize();
+    let crop = shot.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
     if (crop.getSize().width > 1600) crop = crop.resize({ width: 1600 });
     const image = crop.toDataURL();
     win.webContents.send('capture:result', { status: 'reading', image });
