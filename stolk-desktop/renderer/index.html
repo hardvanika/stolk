@@ -959,13 +959,13 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
         <div class="field"><label for="mText">Qué hablasteis</label><textarea id="mText" name="text" required placeholder="Le pasé el deck. Quiere verlo con su socio."></textarea></div>
         <div class="form-row">
-          <div class="field"><label for="mDate">Fecha</label><input id="mDate" type="date" name="date" value="${iso(TODAY)}"></div>
+          <div class="field"><label for="mDate">Fecha</label><input id="mDate" type="date" name="date"><span class="note">Si la dejas vacía, hoy.</span></div>
           <div class="field"><label for="mFollow">Seguimiento (opcional)</label><input id="mFollow" type="date" name="follow"></div>
         </div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>`,
     (fd) => {
-      const body = { cid: Number(fd.get('cid')), date: fd.get('date'), ch: fd.get('ch'), text: fd.get('text') };
+      const body = { cid: Number(fd.get('cid')), date: fd.get('date') || iso(TODAY), ch: fd.get('ch'), text: fd.get('text') };
       if (fd.get('follow')) body.follow = fd.get('follow');
       state.selectedContact = body.cid;
       act(async () => { await Api.post('/interactions', body); closeModal(); }, ['interactions', 'contacts', 'today'], 'Guardado en el historial');

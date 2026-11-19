@@ -102,6 +102,19 @@ try {
   check(await chat.count() > 0, 'la ficha tiene botones de chat');
   if (await chat.count()) { await chat.click(); await page.waitForTimeout(500); }
   check(failed.length === before && (await page.evaluate(() => window.STOLK_CALLS)).some((c) => /\/opened$/.test(c)), 'abrir un chat se anota con /contacts/:id/opened');
+  // Registrar contacto: dates start empty; an empty Fecha saves as today.
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForTimeout(300);
+  await page.click('button[data-action=log]');
+  await page.waitForSelector('#mDate');
+  check((await page.inputValue('#mDate')) === '' && (await page.inputValue('#mFollow')) === '', 'Registrar contacto empieza con las fechas vacías');
+  await page.fill('#modalForm textarea[name=text]', 'Prueba de fecha vacía');
+  await page.click('#modalForm button[type=submit]');
+  await page.waitForTimeout(600);
+  const ints = await (await fetch(`http://127.0.0.1:${port}/interactions`, { headers: h })).json();
+  const mine = ints.find((i) => i.text === 'Prueba de fecha vacía');
+  const d = new Date(); const todayIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  check(mine && mine.date === todayIso && !mine.follow, 'sin fecha se guarda con la de hoy');
   await page.evaluate(() => { location.hash = 'preguntar'; });
   await page.waitForSelector('#askInput');
   await page.fill('#askInput', '¿Con quién hablé ayer?');

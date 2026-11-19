@@ -18,6 +18,8 @@ const PANEL_WIDTH = 440;
 const wantsCapture = (argv) => argv.includes('--capture');
 
 if (!app.requestSingleInstanceLock()) app.quit();
+// Spanish UI locale, so date pickers read dd/mm/aaaa whatever the system language is.
+app.commandLine.appendSwitch('lang', 'es-ES');
 
 let win = null;
 let tray = null;
