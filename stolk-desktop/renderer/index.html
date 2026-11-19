@@ -176,6 +176,36 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .google-btn { gap: 10px; background: #fff; color: #1f1f1f; border: 1px solid #747775; font-weight: 500; }
 .google-btn:hover { background: #f2f2f2; }
 details > summary { cursor: pointer; }
+.chat { display: flex; flex-direction: column; height: calc(100vh - 96px); min-height: 420px; max-width: 820px; margin: 0 auto; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 8px 2px 16px; }
+.chat-empty { margin: auto; text-align: center; color: var(--muted); max-width: 420px; }
+.msg { display: flex; }
+.msg.me { justify-content: flex-end; }
+.msg .bubble { max-width: 85%; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); line-height: 1.55; font-size: 15px; }
+.msg .answer, .msg .msg-text { white-space: pre-wrap; }
+.msg.me .bubble { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.msg .bubble.err { border-color: var(--line-strong); }
+.msg .answer { font-size: 15px; }
+.msg .cites { margin-top: 10px; }
+.msg .cites .tag { cursor: pointer; font: inherit; font-size: 12.5px; }
+.draft-box { margin-top: 12px; white-space: normal; }
+.draft-box textarea { min-height: 130px; }
+.draft-old { margin-top: 10px; padding: 10px 12px; border-left: 2px solid var(--line-strong); color: var(--muted); }
+.msg-files, .composer-files { display: flex; flex-wrap: wrap; gap: 6px; }
+.msg-files { margin-bottom: 8px; }
+.composer-files:empty { display: none; }
+.composer { border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.composer:focus-within { border-color: var(--ink); }
+.composer-row { display: flex; align-items: flex-end; gap: 8px; }
+.composer textarea { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; font: inherit; font-size: 15px; line-height: 1.5; padding: 7px 4px; max-height: 200px; color: var(--ink); }
+.composer textarea:focus { outline: none; }
+.icon-btn { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.icon-btn:hover { background: var(--surface-2); }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 13px; }
+.file-chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; }
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-x { border: 0; background: transparent; cursor: pointer; font-size: 16px; color: var(--muted); padding: 0 2px; }
 .cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
 
 .cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -372,7 +402,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     contactFilter: 'todos',
     contactQuery: '',
     calMonth: new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
-    lastAsk: null,
+    chat: [], askFiles: [], askLoading: false, askBasic: false,
   };
   // ---------- Data from the local server (see plan/stolk-api-interface.md) ----------
   const nowHM = () => TODAY.toTimeString().slice(0, 5);
@@ -451,7 +481,19 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     main.classList.toggle('fit', v === 'calendario');
     main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
     if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
-    if (v === 'preguntar') document.getElementById('askInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) document.getElementById('askForm').requestSubmit(); });
+    if (v === 'preguntar') {
+      const input = document.getElementById('askInput');
+      const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 200) + 'px'; };
+      input?.addEventListener('input', grow);
+      input?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); document.getElementById('askForm').requestSubmit(); } });
+      input?.addEventListener('paste', (e) => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addAskFiles(fs); } });
+      const log = document.getElementById('chatLog'); if (log) log.scrollTop = log.scrollHeight;
+      document.getElementById('askAttach')?.addEventListener('click', () => document.getElementById('askFileInput').click());
+      document.getElementById('askFileInput')?.addEventListener('change', (e) => { addAskFiles([...e.target.files]); e.target.value = ''; });
+      const form = document.getElementById('askForm');
+      form?.addEventListener('dragover', (e) => e.preventDefault());
+      form?.addEventListener('drop', (e) => { e.preventDefault(); addAskFiles([...(e.dataTransfer?.files || [])]); });
+    }
   }
   window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
 
@@ -534,8 +576,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="avatar lg">${initials(c.name)}</div>
           <div class="who"><h2 style="font-size:24px">${esc(c.name)}</h2><div class="muted">${esc(c.role)} · ${esc(c.company)}</div></div>
           <div class="actions">
-            <button class="btn" data-action="log" data-id="${c.id}">Registrar contacto</button>
-            <button class="btn primary" data-action="meet" data-id="${c.id}">Quedar</button>
+            <button class="btn" data-action="edit-contact" data-id="${c.id}">Editar</button>
+            <button class="btn danger" data-action="delete-contact" data-id="${c.id}">Eliminar</button>
           </div>
         </div>
         <div class="facts">
@@ -641,7 +683,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
             <div class="detail-head">
               <div class="avatar">${initials(c.name)}</div>
               <div class="who"><h3>${esc(c.name)}</h3><div class="muted" style="font-size:13.5px">${esc(pp.role)} · ${esc(c.company)}</div></div>
-              <div class="actions"><button class="btn small" data-action="add-task" data-id="${p.id}:${c.id}">Añadir pendiente</button><button class="btn small primary" data-action="meet" data-id="${c.id}">Quedar</button></div>
+              <div class="actions"><button class="btn small" data-action="add-task" data-id="${p.id}:${c.id}">Añadir pendiente</button></div>
             </div>
             <ul class="list" style="margin-top:8px">${ts.map((t) => `
               <li class="row" style="padding-inline:0">
@@ -747,51 +789,92 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <ul class="list panel agenda">${days.join('') || '<li class="empty">Nada este mes.</li>'}</ul>`;
   }
 
-  // ---------- Preguntar (local RAG, simulated on example data) ----------
+  // ---------- Preguntar: a chat with Claude through the local server (/ask) ----------
+  const ASK_MAX_FILES = 5, ASK_MAX_BYTES = 10 * 1024 * 1024;
+  const askCites = (r) => (r.cites || []).map((x) => {
+    if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, badge: initials(c.name) }; }
+    if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, badge: 'Ev' }; }
+    if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, badge: 'Pr' }; }
+    return null;
+  }).filter(Boolean);
   async function claudeAsk(q) {
-    state.lastAsk = { q, loading: true };
+    const files = state.askFiles.splice(0);
+    const history = state.chat.filter((m) => !m.error && m.text).slice(-20).map((m) => ({ role: m.role, text: m.text }));
+    state.chat.push({ role: 'user', text: q, files: files.map((f) => ({ name: f.name, mediaType: f.mediaType, url: f.url })) });
+    state.askLoading = true;
     render();
+    const body = { question: q };
+    if (history.length && !state.askBasic) body.history = history;
+    if (files.length) body.attachments = files.map((f) => ({ name: f.name, mediaType: f.mediaType, data: f.data }));
     try {
-      const r = await Api.post('/ask', { question: q });
-      const cites = (r.cites || []).map((x) => {
-        if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, meta: [c.role, c.company].filter(Boolean).join(' · '), badge: initials(c.name) }; }
-        if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, meta: `Evento · ${fmt(e.date)}`, badge: 'Ev' }; }
-        if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, meta: 'Proyecto', badge: 'Pr' }; }
-        return null;
-      }).filter(Boolean);
-      state.lastAsk = { q, answer: r.answer, cites, draft: r.draft || null, model: r.model };
+      let r;
+      try { r = await Api.post('/ask', body); }
+      catch (err) {
+        // Older server without history support: ask again with just the question (files still need the newer server).
+        if (!/unknown field: history/i.test(err.message)) throw err;
+        state.askBasic = true; delete body.history; r = await Api.post('/ask', body);
+      }
+      state.chat.push({ role: 'assistant', text: r.answer || '', cites: askCites(r), draft: r.draft || null });
     } catch (err) {
-      state.lastAsk = { q, error: err.message };
+      const msg = /unknown field: attachments/i.test(err.message) ? 'Tu servidor de Stölk aún no acepta archivos. Actualiza Stölk y vuelve a probar.' : err.message;
+      state.chat.push({ role: 'assistant', error: msg });
     }
+    state.askLoading = false;
     render();
   }
+  function readAskFile(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => { const url = String(fr.result); resolve({ name: file.name, mediaType: file.type || 'application/octet-stream', size: file.size, url, data: url.slice(url.indexOf(',') + 1) }); };
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(file);
+    });
+  }
+  async function addAskFiles(list) {
+    for (const file of list) {
+      const total = state.askFiles.reduce((n, f) => n + f.size, 0) + file.size;
+      if (state.askFiles.length >= ASK_MAX_FILES) { toast(`Máximo ${ASK_MAX_FILES} archivos por mensaje`); break; }
+      if (total > ASK_MAX_BYTES) { toast('Los archivos pasan de 10 MB'); break; }
+      if (!/^(image\/(png|jpeg|webp|gif)|application\/pdf|text\/)/.test(file.type)) { toast(`${file.name}: solo imágenes, PDF o texto`); continue; }
+      state.askFiles.push(await readAskFile(file));
+    }
+    renderComposerFiles();
+  }
+  const fileChip = (f, i, removable) => `<span class="file-chip">${/^image\//.test(f.mediaType) && f.url ? `<img src="${f.url}" alt="">` : '<span class="file-ico" aria-hidden="true">▤</span>'}<span class="file-name">${esc(f.name)}</span>${removable ? `<button type="button" class="file-x" data-remove-file="${i}" aria-label="Quitar ${esc(f.name)}">×</button>` : ''}</span>`;
+  function renderComposerFiles() {
+    const el = document.getElementById('askFiles');
+    if (el) el.innerHTML = state.askFiles.map((f, i) => fileChip(f, i, true)).join('');
+  }
   function viewAsk() {
-    const a = state.lastAsk;
-    const dc = a?.draft && byId(a.draft.cid);
+    const lastDraft = state.chat.map((m) => !!m.draft).lastIndexOf(true);
+    const msgs = state.chat.map((m, idx) => {
+      if (m.role === 'user') return `<div class="msg me"><div class="bubble">${m.files?.length ? `<div class="msg-files">${m.files.map((f, i) => fileChip(f, i, false)).join('')}</div>` : ''}<div class="msg-text">${esc(m.text)}</div></div></div>`;
+      if (m.error) return `<div class="msg"><div class="bubble err">${esc(m.error)}${/clave|activ|conect/i.test(m.error) ? ' <a href="#integraciones">Revisa Claude en Ajustes.</a>' : ''}</div></div>`;
+      const dc = m.draft && byId(m.draft.cid);
+      return `<div class="msg"><div class="bubble">
+          ${m.text ? `<div class="answer">${esc(m.text)}</div>` : ''}
+          ${dc ? (idx === lastDraft ? `<div class="form draft-box" id="askDraft" data-cid="${dc.id}">
+              <div class="field"><label for="askDraftText">Mensaje para ${esc(dc.name)}: edítalo antes de enviar</label><textarea id="askDraftText">${esc(m.draft.text)}</textarea></div>
+              ${sendButtons(dc, m.draft.text, 'Hola')}</div>` : `<div class="draft-old"><b>Mensaje para ${esc(dc.name)}</b><br>${esc(m.draft.text)}</div>`) : ''}
+          ${m.cites?.length ? `<div class="tags cites">${m.cites.map((c) => `<button type="button" class="tag" data-action="${c.action}" data-id="${c.id}">${esc(c.title)}</button>`).join('')}</div>` : ''}
+        </div></div>`;
+    }).join('');
     return `
-      <div class="ask-wrap">
-      <div class="view-head"><div><h1>Preguntar</h1></div></div>
-      <form class="ask-box" id="askForm">
-        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude"></textarea>
-        <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit"${a?.loading ? ' disabled' : ''}>Enviar</button></div>
-      </form>
-      ${a?.q ? `<p class="muted ask-q" style="margin:20px 0 0;white-space:pre-wrap">Tu pregunta: ${esc(a.q)}</p>` : ''}
-      ${a?.loading ? '<p class="muted ask-loading" style="margin-top:20px" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</p>' : ''}
-      ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|activ|conect/i.test(a.error) ? '<p class="note">Revisa Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
-      ${a?.draft && dc ? `
-        <section class="panel panel-pad form" style="margin-top:20px" id="askDraft" data-cid="${dc.id}">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h2>Mensaje para ${esc(dc.name)}</h2><span class="tag cal">Claude</span></div>
-          <div class="field"><label for="askDraftText">Edítalo antes de enviar</label><textarea id="askDraftText" style="min-height:150px">${esc(a.draft.text)}</textarea></div>
-          ${sendButtons(dc, a.draft.text, 'Hola')}
-        </section>` : ''}
-      ${a?.answer ? `
-        <section class="panel panel-pad" style="margin-top:${a.draft ? 14 : 20}px"><div class="answer" style="white-space:pre-wrap">${esc(a.answer)}</div></section>
-        ${a.cites.length ? `<ul class="list panel" style="margin-top:14px">${a.cites.map((c, i) => `
-          <li class="row clickable" data-action="${c.action}" data-id="${c.id}">
-            <div class="avatar">${esc(c.badge)}</div>
-            <div style="min-width:0"><div class="title"><span class="cite">[${i + 1}]</span> ${esc(c.title)}</div><div class="meta">${esc(c.meta)}</div></div>
-            <span class="muted">›</span>
-          </li>`).join('')}</ul>` : ''}` : ''}
+      <div class="chat">
+        <div class="chat-head"><h1>Preguntar</h1>${state.chat.length ? '<button class="btn ghost small" data-action="chat-new">Nueva conversación</button>' : ''}</div>
+        <div class="chat-log" id="chatLog" aria-live="polite">
+          ${msgs || '<div class="chat-empty"><p>Pregunta por tu gente, pide un mensaje o adjunta una foto o un documento.</p></div>'}
+          ${state.askLoading ? '<div class="msg"><div class="bubble muted" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</div></div>' : ''}
+        </div>
+        <form class="composer" id="askForm">
+          <div class="composer-files" id="askFiles">${state.askFiles.map((f, i) => fileChip(f, i, true)).join('')}</div>
+          <div class="composer-row">
+            <button type="button" class="icon-btn" id="askAttach" aria-label="Adjuntar fotos o documentos" title="Adjuntar fotos o documentos">+</button>
+            <input type="file" id="askFileInput" multiple accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/*" hidden>
+            <textarea id="askInput" rows="1" placeholder="Escribe a Claude…" aria-label="Tu mensaje para Claude"></textarea>
+            <button class="btn primary send" type="submit" aria-label="Enviar"${state.askLoading ? ' disabled' : ''}>Enviar</button>
+          </div>
+        </form>
       </div>`;
   }
 
@@ -1029,26 +1112,41 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     document.getElementById('addGuest').addEventListener('change', (ev) => { if (!ev.target.value) return; act(async () => { await Api.put(`/events/${id}/guests/${ev.target.value}`, { st: e.status === 'hecho' ? 'asistió' : 'invitado' }); }, ['events']).then((ok) => ok && modalEventDetail(id)); });
   }
 
-  function modalNewContact() {
+  // New or edit: the same form. Only fields that changed are sent on edit.
+  function modalContact(c) {
+    const v = (k) => esc(c?.[k] || '');
     openModal(`
-      <h2>Nuevo contacto</h2>
+      <h2>${c ? 'Editar persona' : 'Nuevo contacto'}</h2>
       <div class="form">
         <div class="form-row">
-          <div class="field"><label for="cName">Nombre</label><input id="cName" name="name" required></div>
-          <div class="field"><label for="cEmail">Email</label><input id="cEmail" name="email" type="email"></div>
+          <div class="field"><label for="cName">Nombre</label><input id="cName" name="name" required value="${v('name')}"></div>
+          <div class="field"><label for="cRole">Cargo</label><input id="cRole" name="role" value="${v('role')}"></div>
         </div>
         <div class="form-row">
-          <div class="field"><label for="cRole">Cargo</label><input id="cRole" name="role"></div>
-          <div class="field"><label for="cCompany">Empresa</label><input id="cCompany" name="company"></div>
+          <div class="field"><label for="cCompany">Empresa</label><input id="cCompany" name="company" value="${v('company')}"></div>
+          <div class="field"><label for="cEmail">Email</label><input id="cEmail" name="email" type="email" value="${v('email')}"></div>
         </div>
-        <div class="field"><label for="cTags">Etiquetas</label><input id="cTags" name="tags" placeholder="inversor, IA"></div>
-        <div class="field"><label for="cNotes">Notas</label><textarea id="cNotes" name="notes"></textarea></div>
+        <div class="form-row">
+          <div class="field"><label for="cPhone">Teléfono</label><input id="cPhone" name="phone" type="tel" value="${v('phone')}"></div>
+          <div class="field"><label for="cLinkedin">LinkedIn</label><input id="cLinkedin" name="linkedin" placeholder="linkedin.com/in/…" value="${v('linkedin')}"></div>
+        </div>
+        <div class="field"><label for="cTags">Etiquetas</label><input id="cTags" name="tags" placeholder="inversor, IA" value="${esc((c?.tags || []).join(', '))}"></div>
+        <div class="field"><label for="cNotes">Notas</label><textarea id="cNotes" name="notes">${v('notes')}</textarea></div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>`,
     (fd) => {
-      const c = { name: fd.get('name'), email: fd.get('email'), role: fd.get('role') || '', company: fd.get('company') || '', tags: String(fd.get('tags')).split(',').map((s) => s.trim()).filter(Boolean), notes: fd.get('notes') };
-      act(async () => { const made = await Api.post('/contacts', c); state.selectedContact = made.id; state.mobileDetail = true; closeModal(); location.hash = '#contactos'; }, ['contacts'], 'Persona creada');
+      const next = { name: String(fd.get('name')).trim(), role: String(fd.get('role') || '').trim(), company: String(fd.get('company') || '').trim(), email: String(fd.get('email') || '').trim(), phone: String(fd.get('phone') || '').trim(), linkedin: String(fd.get('linkedin') || '').trim(), tags: String(fd.get('tags')).split(',').map((t) => t.trim()).filter(Boolean), notes: String(fd.get('notes') || '') };
+      if (!c) return act(async () => { const made = await Api.post('/contacts', next); state.selectedContact = made.id; state.mobileDetail = true; closeModal(); location.hash = '#contactos'; }, ['contacts'], 'Persona creada');
+      const patch = Object.fromEntries(Object.entries(next).filter(([k, val]) => JSON.stringify(val) !== JSON.stringify(c[k] ?? (k === 'tags' ? [] : ''))));
+      act(async () => { if (Object.keys(patch).length) await Api.patch(`/contacts/${c.id}`, patch); closeModal(); }, ['contacts'], 'Cambios guardados');
     });
+  }
+  function modalDeleteContact(c) {
+    openModal(`
+      <h2>¿Eliminar a ${esc(c.name)}?</h2>
+      <p style="margin:0">Se borran su ficha y su historial de Stölk. No se puede deshacer.</p>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn danger" type="submit">Eliminar</button></div>`,
+    () => act(async () => { await Api.del(`/contacts/${c.id}`); state.selectedContact = null; state.mobileDetail = false; closeModal(); }, ['contacts', 'interactions', 'relations', 'events', 'projects', 'today'], 'Persona eliminada'));
   }
 
   // One-click drafts per channel (see research/envio-enlace-cal.md). Nothing is sent without Ivan's click.
@@ -1167,6 +1265,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'filter') { state.contactFilter = id; render(); }
     else if (a === 'open-event') modalEventDetail(Number(id));
     else if (a === 'log') modalLog(id ? Number(id) : state.selectedContact);
+    else if (a === 'edit-contact') modalContact(byId(Number(id)));
+    else if (a === 'delete-contact') modalDeleteContact(byId(Number(id)));
     else if (a === 'new-event') modalEvent();
     else if (a === 'meet') modalMeet(id ? Number(id) : null);
     else if (a === 'claude-on') act(() => Api.patch('/settings', { claudeOn: true }), ['settings'], 'Claude activado');
@@ -1191,9 +1291,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       const [eid, cid] = id.split(':').map(Number);
       act(() => Api.put(`/events/${eid}/guests/${cid}`, { st: 'invitado' }), ['events'], `${byId(cid).name.split(' ')[0]} invitado`).then((ok) => ok && modalEventDetail(eid));
     }
-    else if (a === 'new-contact') modalNewContact();
+    else if (a === 'new-contact') modalContact(null);
     else if (a === 'month') { const n = Number(id); state.calMonth = n === 0 ? new Date(TODAY.getFullYear(), TODAY.getMonth(), 1) : new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + n, 1); act(() => {}, ['calendar']); }
     else if (a === 'gcal') { const g = state.gcal.find((x) => x.id === id); toast(`${g.title} · ${g.start}–${g.end}${g.place ? ' · ' + g.place : ''} (Google Calendar)`); }
+    else if (a === 'chat-new') { state.chat = []; state.askFiles = []; render(); }
     else if (a === 'theme') { window.stolkTheme.set(id); render(); }
     else if (a === 'gcal-on') {
       const clientId = document.getElementById('g-client-id')?.value.trim(), clientSecret = document.getElementById('g-client-secret')?.value.trim();
@@ -1243,9 +1344,11 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (e.target.id !== 'askForm') return;
     e.preventDefault();
     const q = document.getElementById('askInput').value.trim();
-    if (q) claudeAsk(q);
+    if (state.askLoading) return;
+    if (q || state.askFiles.length) claudeAsk(q || 'Mira lo que te adjunto.');
   });
 
+  document.addEventListener('click', (e) => { const x = e.target.closest('[data-remove-file]'); if (x) { state.askFiles.splice(Number(x.dataset.removeFile), 1); renderComposerFiles(); } });
   window.stolk?.onCapture?.((r) => onCapture(r));
   // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.
   function showUpdate(version) {
