@@ -145,7 +145,8 @@ export class Syncer {
   async syncBlocks(cal: CalcomClient): Promise<number> {
     const today = todayIso(this.now());
     const rows = this.db.prepare(`SELECT * FROM events WHERE date >= ? AND
-      ((status <> 'cancelado' AND start <> '' AND cal_block_synced = 0) OR (status = 'cancelado' AND cal_block_uid IS NOT NULL))`).all(today) as any[];
+      ((status <> 'cancelado' AND start <> '' AND block = 1 AND cal_block_synced = 0)
+       OR ((status = 'cancelado' OR block = 0) AND cal_block_uid IS NOT NULL))`).all(today) as any[];
     let n = 0;
     for (const ev of rows) {
       await this.blockEvent(cal, ev);
@@ -161,7 +162,7 @@ export class Syncer {
         await cal.cancel(ev.cal_block_uid);
         this.db.prepare('UPDATE events SET cal_block_uid = NULL WHERE id = ?').run(ev.id);
       }
-      if (ev.status !== 'cancelado' && ev.start) {
+      if (ev.status !== 'cancelado' && ev.start && ev.block) {
         const o = await this.ownerAndBlockType(cal);
         const minutes = blockLength(ev.end ? minutesBetween(ev.start, ev.end) : 60);
         const uid = await cal.createBlock({

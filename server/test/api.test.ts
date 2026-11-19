@@ -140,6 +140,8 @@ test('events: create with guests and URL, guests upsert, range filter', async ()
   assert.equal(e.body.url, 'https://lu.ma/tt5');
   assert.deepEqual(e.body.guests, [{ cid: 5, st: 'confirmado' }]);
   assert.equal(e.body.calBlock, null);
+  assert.equal(e.body.block, true); // default
+  assert.equal((await api('POST', '/events', { title: 'x', date: '2027-01-01', block: 'yes' })).status, 400);
 
   const g = await api('PUT', `/events/${e.body.id}/guests/4`, { st: 'invitado' });
   assert.equal(g.body.guests.length, 2);
