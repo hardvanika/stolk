@@ -93,6 +93,8 @@ While the Google project is in "Testing", Google expires the sign-in after 7 day
 
 `POST /ask {question}` sends the question to Claude together with a compact JSON copy of your data: contacts (no phone numbers), the last year of history, relations, events, projects, bookings, and the next 90 days of Google Calendar. It returns `{answer, cites, draft, used, model}`. When you ask it to write to someone, `draft` is `{cid, text}`, and the app shows it next to the send buttons. Nothing is ever sent automatically.
 
+It works as a chat. Send the earlier turns as `history: [{role: "user"|"assistant", text}]` (up to 20) and files as `attachments: [{name, mediaType, data}]` with `data` in base64. Photos (PNG, JPG, WebP, GIF), PDFs and text files (TXT, MD, CSV) are accepted, up to 5 files and 10 MB in total. Anything else gets a 400 with a message in Spanish.
+
 - Model: `claude-opus-5-5` by default, changeable in Ajustes (`claudeModel`: Opus 5.5, Sonnet 5.5 or Haiku 5.5).
 - It uses structured output, so the reply is always valid JSON. Server-side fallbacks are on, so if the model declines a question, another model answers instead.
 - The data block is prompt-cached, so follow-up questions within a few minutes are cheaper.
