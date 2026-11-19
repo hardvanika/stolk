@@ -7,6 +7,7 @@
   let next = 5000;
   const today = window.STOLK_TODAY || new Date().toISOString().slice(0, 10);
   const name = (cid) => S.contacts.find((c) => c.id === cid)?.name || '';
+  window.STOLK_DATA = S;
   const log = (window.STOLK_CALLS = []);
   const ok = (body, status = 200) => ({ status, body });
   const routes = [

@@ -202,6 +202,19 @@ details > summary { cursor: pointer; }
 .composer textarea:focus { outline: none; }
 .icon-btn { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
 .icon-btn:hover { background: var(--surface-2); }
+.picker { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.picker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker-chips:empty { display: none; }
+.pick-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); font-size: 13px; color: var(--ink); }
+.pick-chip .avatar { width: 22px; height: 22px; font-size: 10px; }
+.pick-chip button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 5px; border-radius: 999px; }
+.pick-chip button:hover { color: var(--ink); }
+.picker-list { margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; max-height: 196px; overflow-y: auto; z-index: 5; }
+.picker-list[hidden] { display: none; }
+.picker-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.picker-list li .muted { font-size: 12.5px; }
+.picker-list li[aria-selected="true"], .picker-list li:hover { background: var(--surface-2); }
+.picker-list .none { color: var(--muted); cursor: default; }
 .file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 13px; }
 .file-chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -502,11 +515,12 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   const chLabel = (i) => i.ch === 'cal' ? `<span class="tag cal">Cal.com · ${esc(i.calType || '')}</span>` : `<span class="tag plain">${CHANNELS[i.ch]}</span>`;
 
   // ---------- Hoy ----------
+  const bookingName = (b) => byId(b.cid)?.name || b.attendeeName || b.attendeeEmail || 'invitado';
   function upcomingItems(days) {
     const end = iso(addDays(TODAY, days));
     const t = iso(TODAY);
     const ev = state.events.filter((e) => e.date >= t && e.date <= end).map((e) => ({ kind: 'event', date: e.date, time: e.start, title: e.title, sub: `${e.place} · ${e.guests.length} invitados`, ref: e.id }));
-    const bk = state.bookings.filter((b) => b.date >= t && b.date <= end).map((b) => ({ kind: 'cal', date: b.date, time: b.start, title: `${b.type} con ${byId(b.cid).name}`, sub: `Cal.com · ${b.start}–${b.end}`, ref: b.cid }));
+    const bk = state.bookings.filter((b) => b.date >= t && b.date <= end).map((b) => ({ kind: 'cal', date: b.date, time: b.start, title: `${b.type} con ${bookingName(b)}`, sub: `Cal.com · ${b.start}–${b.end}`, ref: b.cid }));
     return [...ev, ...bk].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   }
   const todayItems = () => state.today.map((it) => ({ ...it, action: it.src === 'event' ? 'open-event' : it.cid ? 'open-contact' : null, id: it.src === 'event' ? it.id : it.cid, c: it.cid ? byId(it.cid) : null }));
@@ -714,7 +728,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
         <p style="margin:0">${esc(e.desc)}</p>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div class="guest-row">${e.guests.slice(0, 6).map((g) => `<span class="avatar" title="${esc(byId(g.cid).name)}">${initials(byId(g.cid).name)}</span>`).join('')}</div>
+          <div class="guest-row">${e.guests.slice(0, 6).map((g) => `<span class="avatar" title="${esc(byId(g.cid)?.name || '')}">${initials(byId(g.cid)?.name || '?')}</span>`).join('')}</div>
           <span class="muted" style="font-size:13.5px">${confirmed}/${e.guests.length} ${e.status === 'hecho' ? 'asistieron' : 'confirmados'}</span>
         </div>
         ${e.calBlock?.error ? `<div class="cal-sync" role="alert"><span class="led off"></span>No se pudo bloquear en Cal.com: ${esc(e.calBlock.error)}. Se reintenta al sincronizar.</div>` : e.status === 'planeado' ? `<div class="cal-sync">${state.calConnected && state.blockEvents && e.calBlock?.synced ? `<span class="led"></span>Bloqueado en Cal.com · ${fmt(e.date)} ${e.start}–${e.end}` : state.calConnected && state.blockEvents ? '<span class="led off"></span>Pendiente de bloquear en Cal.com' : '<span class="led off"></span>Sin bloquear en Cal.com'}</div>` : ''}
@@ -740,9 +754,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const out = [];
     for (const e of state.events) if (e.date === dateStr) out.push({ cls: 'event', label: `${e.start} ${e.title}`, action: 'open-event', id: e.id });
     for (const e of state.events) if (e.date === dateStr && e.status === 'planeado' && state.calConnected && state.blockEvents) out.push({ cls: 'block', label: 'Bloqueado en Cal.com', action: 'open-event', id: e.id });
-    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${byId(b.cid).name.split(' ')[0]}`, action: 'open-contact', id: b.cid });
+    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${bookingName(b).split(' ')[0]}`, action: byId(b.cid) ? 'open-contact' : null, id: b.cid });
     if (state.gcalConnected) for (const g of state.gcal) if (g.date === dateStr) out.push({ cls: 'gcal', label: `${g.start} ${g.title}`, action: 'gcal', id: g.id });
-    for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${byId(i.cid).name.split(' ')[0]}`, action: 'open-contact', id: i.cid });
+    for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${(byId(i.cid)?.name || 'contacto').split(' ')[0]}`, action: 'open-contact', id: i.cid });
     const t = (x) => /^\d\d:\d\d/.test(x.label) ? x.label.slice(0, 5) : x.cls === 'block' ? x.label : '99';
     return out.sort((a, b) => t(a).localeCompare(t(b)));
   }
@@ -1062,6 +1076,44 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       .filter((s) => !taken.includes(s) && !blocked.some((e) => s >= e.start && s < e.end));
   }
 
+  // People picker: type to filter, click or Enter to add, × to remove. Hidden inputs keep FormData.getAll(name) working.
+  const peoplePicker = (id, name, placeholder) => `
+    <div class="picker" data-picker="${id}" data-name="${name}">
+      <div class="picker-chips" id="${id}Chips"></div>
+      <input id="${id}" type="search" autocomplete="off" placeholder="${esc(placeholder)}" role="combobox" aria-expanded="false" aria-controls="${id}List" aria-autocomplete="list">
+      <ul class="picker-list" id="${id}List" role="listbox" hidden></ul>
+    </div>`;
+  function wirePicker(id) {
+    const root = modalRoot.querySelector(`[data-picker="${id}"]`);
+    const name = root.dataset.name;
+    const input = document.getElementById(id), list = document.getElementById(`${id}List`), chips = document.getElementById(`${id}Chips`);
+    const chosen = [];
+    let active = 0, matches = [];
+    const norm = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const drawChips = () => {
+      chips.innerHTML = chosen.map((cid) => { const c = byId(cid); return c ? `<span class="pick-chip"><span class="avatar">${initials(c.name)}</span>${esc(c.name)}<button type="button" data-remove="${cid}" aria-label="Quitar a ${esc(c.name)}">×</button><input type="hidden" name="${name}" value="${cid}"></span>` : ''; }).join('');
+    };
+    const drawList = () => {
+      const q = norm(input.value.trim());
+      matches = state.contacts.filter((c) => !chosen.includes(c.id) && (!q || norm(`${c.name} ${c.company || ''} ${c.role || ''} ${c.email || ''}`).includes(q))).slice(0, 8);
+      active = Math.min(active, Math.max(matches.length - 1, 0));
+      list.innerHTML = matches.length ? matches.map((c, i) => `<li role="option" data-cid="${c.id}" aria-selected="${i === active}"><span class="avatar">${initials(c.name)}</span><span>${esc(c.name)}${c.company ? ` <span class="muted">· ${esc(c.company)}</span>` : ''}</span></li>`).join('') : `<li class="none">${state.contacts.length ? 'Nadie con ese nombre' : 'Aún no tienes personas'}</li>`;
+      list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    };
+    const hide = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); };
+    const add = (cid) => { if (!chosen.includes(cid)) chosen.push(cid); input.value = ''; active = 0; drawChips(); drawList(); input.focus(); };
+    input.addEventListener('focus', drawList);
+    input.addEventListener('input', () => { active = 0; drawList(); });
+    input.addEventListener('blur', () => setTimeout(hide, 120));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (list.hidden) drawList(); active = (active + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % Math.max(matches.length, 1); drawList(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (matches[active]) add(matches[active].id); }
+      else if (e.key === 'Escape' && !list.hidden) { e.stopPropagation(); hide(); }
+      else if (e.key === 'Backspace' && !input.value && chosen.length) { chosen.pop(); drawChips(); drawList(); }
+    });
+    list.addEventListener('mousedown', (e) => { const li = e.target.closest('li[data-cid]'); if (li) { e.preventDefault(); add(Number(li.dataset.cid)); } });
+    chips.addEventListener('click', (e) => { const b = e.target.closest('[data-remove]'); if (b) { chosen.splice(chosen.indexOf(Number(b.dataset.remove)), 1); drawChips(); input.focus(); } });
+  }
   function modalEvent() {
     openModal(`
       <h2>Nuevo evento</h2>
@@ -1076,7 +1128,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="field"><label for="eEnd">Acaba</label><input id="eEnd" type="time" name="end" value="21:00"></div>
         </div>
         <div class="field"><label for="eUrl">Enlace del evento</label><input id="eUrl" name="url" type="url" placeholder="https://lu.ma/… o https://meetup.com/…"></div>
-        <div class="field"><label for="eGuests">Invitados</label><select id="eGuests" name="guests" multiple size="5">${contactOptions(null)}</select><span class="note">Ctrl/Cmd + clic para elegir varios.</span></div>
+        <div class="field"><label for="eGuests">Invitados</label>${peoplePicker('eGuests', 'guests', 'Busca por nombre o empresa')}</div>
         <label class="toggle"><input type="checkbox" name="block" ${state.calConnected && state.blockEvents ? 'checked' : ''} ${state.calConnected ? '' : 'disabled'}><span>Bloquear esta franja en Cal.com</span></label>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear evento</button></div>`,
@@ -1085,6 +1137,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       act(async () => { await Api.post('/events', ev); closeModal(); location.hash = '#eventos'; }, ['events', 'today', 'calendar'],
         ev.block ? `Creado y bloqueado en Cal.com: ${fmt(ev.date)} ${ev.start}–${ev.end}` : 'Evento creado');
     });
+    wirePicker('eGuests');
   }
 
   async function modalEventDetail(id) {
@@ -1229,13 +1282,14 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <div class="form">
         <div class="field"><label for="pTitle">Nombre</label><input id="pTitle" name="title" required placeholder="Hackathon de primavera"></div>
         <div class="field"><label for="pDesc">Descripción rápida</label><textarea id="pDesc" name="desc" placeholder="Qué es y qué tiene que pasar."></textarea></div>
-        <div class="field"><label for="pPeople">Personas</label><select id="pPeople" name="people" multiple size="5">${contactOptions(null)}</select><span class="note">Ctrl/Cmd + clic para elegir varias.</span></div>
+        <div class="field"><label for="pPeople">Personas</label>${peoplePicker('pPeople', 'people', 'Busca por nombre o empresa')}</div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear proyecto</button></div>`,
     (fd) => {
       const p = { title: fd.get('title'), desc: fd.get('desc') || '', status: 'En marcha', people: fd.getAll('people').map((x) => ({ cid: Number(x), role: 'Colaborador' })) };
       act(async () => { const made = await Api.post('/projects', p); state.selectedProject = made.id; state.mobileProject = true; closeModal(); location.hash = '#proyectos'; }, ['projects'], 'Proyecto creado');
     });
+    wirePicker('pPeople');
   }
   function modalAddTask(pid, cid) {
     const c = byId(cid);
