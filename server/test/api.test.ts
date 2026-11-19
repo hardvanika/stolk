@@ -86,7 +86,9 @@ test('contacts: create, patch, validation and delete', async () => {
   const c = await api('POST', '/contacts', { name: 'Nuevo Contacto', email: ' Nuevo@Example.com ', tags: ['a', 'a', ' b '] });
   assert.equal(c.status, 201);
   assert.deepEqual(c.body.tags, ['a', 'b']);
-  const p = await api('PATCH', `/contacts/${c.body.id}`, { company: 'ACME' });
+  assert.equal(c.body.web, '');
+  const p = await api('PATCH', `/contacts/${c.body.id}`, { company: 'ACME', web: 'https://acme.example' });
+  assert.equal(p.body.web, 'https://acme.example');
   assert.equal(p.body.company, 'ACME');
   assert.equal(p.body.name, 'Nuevo Contacto');
   assert.equal((await api('POST', '/contacts', { email: 'x@y' })).status, 400);

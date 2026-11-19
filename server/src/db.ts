@@ -128,6 +128,9 @@ const MIGRATIONS: string[] = [
   CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE sync_state (name TEXT PRIMARY KEY, last_sync TEXT, ok INTEGER, message TEXT);
   `,
+  `
+  ALTER TABLE contacts ADD COLUMN web TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 export function openDb(path: string): DB {

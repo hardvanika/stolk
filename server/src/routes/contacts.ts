@@ -13,6 +13,7 @@ const SPEC: Spec = {
   phone: { kind: 'string' },
   telegram: { kind: 'string' },
   linkedin: { kind: 'string' },
+  web: { kind: 'string' },
   notes: { kind: 'string' },
   tags: { kind: 'tags' },
 };
@@ -22,7 +23,7 @@ export const STALE_DAYS = 60;
 export function mapContact(r: any, lastContact: string | null = null) {
   return {
     id: r.id, name: r.name, role: r.role, company: r.company, email: r.email, phone: r.phone,
-    telegram: r.telegram, linkedin: r.linkedin, tags: JSON.parse(r.tags), notes: r.notes,
+    telegram: r.telegram, linkedin: r.linkedin, web: r.web, tags: JSON.parse(r.tags), notes: r.notes,
     lastContact, createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -63,7 +64,7 @@ export function contactRoutes(r: Router, db: DB, now: () => Date) {
         if (tag && !c.tags.includes(tag)) return false;
         if (withFollow && !withFollow.has(c.id)) return false;
         if (filter === 'sin-contacto' && !(c.lastContact && daysBetween(c.lastContact, today) >= STALE_DAYS)) return false;
-        if (q && !fold([c.name, c.company, c.role, c.tags.join(' '), c.notes, c.email].join(' ')).includes(q)) return false;
+        if (q && !fold([c.name, c.company, c.role, c.tags.join(' '), c.notes, c.email, c.web].join(' ')).includes(q)) return false;
         return true;
       })
       .sort((a, b) => (b.lastContact ?? '').localeCompare(a.lastContact ?? '') || a.name.localeCompare(b.name));
@@ -110,7 +111,7 @@ export function contactRoutes(r: Router, db: DB, now: () => Date) {
 
   r.post('/contacts', ({ body }) => {
     const v = validate(body, SPEC);
-    const cols = columns({ role: '', company: '', email: '', phone: '', telegram: '', linkedin: '', notes: '', tags: [], ...v });
+    const cols = columns({ role: '', company: '', email: '', phone: '', telegram: '', linkedin: '', web: '', notes: '', tags: [], ...v });
     const keys = Object.keys(cols);
     const res = db.prepare(`INSERT INTO contacts (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`).run(...keys.map((k) => cols[k]));
     return mapContact(getContact(db, Number(res.lastInsertRowid)));
