@@ -3,6 +3,7 @@
 (() => {
   const S = JSON.parse(JSON.stringify(window.STOLK_SAMPLE));
   S.settings = { blockEvents: true, claudeOn: true, theme: 'claro', calTypes: [], claudeModel: 'claude-opus-5-5', captureShortcut: 'Ctrl+Shift+S' };
+  S.claudeMcp = { desktop: { available: true, connected: false }, code: { available: true, connected: false } };
   S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: true, lastSync: '18:02' }, claude: { connected: true } };
   let next = 5000;
   const today = window.STOLK_TODAY || new Date().toISOString().slice(0, 10);
@@ -37,6 +38,9 @@
     ['GET', /^\/settings$/, () => ok(S.settings)],
     ['PATCH', /^\/settings$/, (m, b) => ok(Object.assign(S.settings, b))],
     ['GET', /^\/connections$/, () => ok(S.connections)],
+    ['GET', /^\/integrations\/claude$/, () => ok(S.claudeMcp)],
+    ['POST', /^\/integrations\/claude\/(desktop|code)$/, (m) => { S.claudeMcp[m[1]].connected = true; return ok(S.claudeMcp); }],
+    ['DELETE', /^\/integrations\/claude\/(desktop|code)$/, (m) => { S.claudeMcp[m[1]].connected = false; return ok(undefined); }],
     ['PUT', /^\/connections\/(\w+)$/, (m) => { S.connections[m[1]] = { connected: true }; return ok({ ok: true }); }],
     ['POST', /^\/ask$/, (m, b) => ok(/escribe/i.test(b.question)
       ? { answer: 'Te dejo un mensaje para Jorge.', cites: [{ type: 'contact', id: 2 }], draft: { cid: 2, text: 'Hola Jorge, te paso el deck actualizado de Voltia. Un abrazo, Ivan' } }

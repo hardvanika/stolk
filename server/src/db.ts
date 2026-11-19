@@ -149,6 +149,8 @@ export function openDb(path: string): DB {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
   db.exec('PRAGMA foreign_keys = ON;');
+  // The app and Claude's MCP server can both have the file open; wait for a lock instead of failing.
+  db.exec('PRAGMA busy_timeout = 5000;');
   if (path !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   migrate(db);
   return db;

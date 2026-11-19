@@ -97,3 +97,19 @@ While the Google project is in "Testing", Google expires the sign-in after 7 day
 - It uses structured output, so the reply is always valid JSON. Server-side fallbacks are on, so if the model declines a question, another model answers instead.
 - The data block is prompt-cached, so follow-up questions within a few minutes are cheaper.
 - Turn it off with `claudeOn: false` in Ajustes.
+
+## Claude ("pásalo a Stölk")
+
+`dist/mcp.js` is an MCP server on stdio. Claude desktop or Claude Code start it, and it opens the same `~/.stolk/stolk.db` as the app, so when Ivan tells Claude "pásalo a Stölk", the people, conversations and tasks land here. It goes through the same routes as the HTTP API (in process, no token or port needed).
+
+Tools: `search_contacts`, `get_contact`, `add_contact` (refuses a likely duplicate and returns the matches), `update_contact` (`addNote`, `addTags`), `log_interaction`, `add_task` (into a project by name, created on demand, default "Pendientes"), `list_tasks`, `complete_task`, `list_projects`, `add_project`. Nothing deletes. There is also a `pasar_a_stolk` prompt.
+
+Ajustes → "Pasar a Stölk desde Claude" calls:
+
+- `GET /integrations/claude` → `{ desktop: {available, connected, config}, code: {...}, launcher, installed }`
+- `POST /integrations/claude/desktop|code` adds `mcpServers.stolk` to `~/.config/Claude/claude_desktop_config.json`, or to Claude Code's user config (`claude mcp add --scope user` when the CLI is on PATH, else `~/.claude.json`). Other settings in those files are kept, and an unreadable file is never overwritten.
+- `DELETE /integrations/claude/desktop|code` removes it.
+
+Both point at `~/.stolk/bin/stolk-mcp`, a launcher the server rewrites at every start. It runs `~/.stolk/mcp/stolk-mcp.js` (a copy of `dist/mcp.js`) with the current AppImage or Electron binary and `ELECTRON_RUN_AS_NODE=1`, so updates that rename the AppImage need no reconnect.
+
+Try it by hand: `npm run build && printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | STOLK_HOME=/tmp/stolk-try node dist/mcp.js`

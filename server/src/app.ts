@@ -13,6 +13,7 @@ import { Syncer } from './sync/index.js';
 import type { Fetch } from './sync/fetch.js';
 import { ask, type CreateMessage } from './ask.js';
 import { getSettings } from './routes/settings.js';
+import { ClaudeConnect, TARGETS, type Target } from './claude-connect.js';
 
 export const VERSION = '0.1.0';
 
@@ -25,9 +26,11 @@ export interface AppDeps {
   fetch?: Fetch;
   /** Injectable Claude call for /ask tests. */
   createMessage?: CreateMessage;
+  /** Registers Stölk with Claude desktop and Claude Code (Ajustes → Claude). Tests pass one on a temp home. */
+  claude?: ClaudeConnect;
 }
 
-export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage }: AppDeps): Router {
+export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage, claude }: AppDeps): Router {
   const r = new Router();
   const syncer = new Syncer(db, env, f, now);
   r.get('/health', () => ({ ok: true, version: VERSION }), { public: true });
@@ -49,5 +52,16 @@ export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch,
     if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
     return ask(db, env, q, { now: now(), model: s.claudeModel, create: createMessage });
   });
+
+  // Ajustes → Claude: let Claude desktop and Claude Code save people, notes and tasks here (MCP).
+  if (claude) {
+    const target = (t: string): Target => {
+      if (!TARGETS.includes(t as Target)) throw new HttpError(404, 'not_found', 'Usa desktop o code');
+      return t as Target;
+    };
+    r.get('/integrations/claude', () => claude.status());
+    r.post('/integrations/claude/:target', ({ params }) => claude.connect(target(params.target)));
+    r.delete('/integrations/claude/:target', async ({ params }) => { await claude.disconnect(target(params.target)); });
+  }
   return r;
 }
