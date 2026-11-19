@@ -1,7 +1,7 @@
 {
   "name": "stolk-desktop",
   "productName": "Stölk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Stölk: personal networking CRM for your desktop.",
   "author": "hardvanika",
   "license": "UNLICENSED",
@@ -33,7 +33,8 @@
       "renderer/**",
       "build/icon.png",
       "build/tray.png",
-      "package.json"
+      "package.json",
+      "build/google-client.json"
     ],
     "linux": {
       "target": [

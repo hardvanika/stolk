@@ -66,6 +66,11 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.selectOption('#claudeModel', 'claude-haiku-5-5');
   await page.waitForTimeout(200);
   check((await page.evaluate(() => window.STOLK_CALLS)).includes('PATCH /settings'), `${label}: el modelo de Claude se cambia en Ajustes`);
+  await page.click('button[data-action=gcal-on]');
+  await page.waitForTimeout(2600);
+  const gcalls = await page.evaluate(() => window.STOLK_CALLS);
+  check(gcalls.includes('POST /connections/gcal/start') && gcalls.includes('open https://auth.example/consent'), `${label}: Continuar con Google abre el navegador`);
+  check(!(await page.locator('button[data-action=gcal-on]').count()), `${label}: Google aparece conectado al volver`);
   await page.click('button[data-action=sync]');
   await page.waitForTimeout(250);
   check((await page.evaluate(() => window.STOLK_CALLS)).filter((c) => c === 'POST /sync').length >= 2, `${label}: el botón Sincronizar llama al servidor`);

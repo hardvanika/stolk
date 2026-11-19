@@ -3,7 +3,7 @@
 (() => {
   const S = JSON.parse(JSON.stringify(window.STOLK_SAMPLE));
   S.settings = { blockEvents: true, claudeOn: true, theme: 'claro', calTypes: [], claudeModel: 'claude-opus-5-5', captureShortcut: 'Ctrl+Shift+S' };
-  S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: true, lastSync: '18:02' }, claude: { connected: true } };
+  S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: false }, gmail: { connected: false }, claude: { connected: true } };
   let next = 5000;
   const today = window.STOLK_TODAY || new Date().toISOString().slice(0, 10);
   const name = (cid) => S.contacts.find((c) => c.id === cid)?.name || '';
@@ -32,6 +32,7 @@
       ...S.gcal.filter((g) => g.date === today).map((g) => ({ src: 'gcal', start: g.start, end: g.end, title: g.title, sub: g.place })),
     ].sort((a, b) => a.start.localeCompare(b.start)))],
     ['GET', /^\/calendar\?/, () => ok({ events: S.events, bookings: S.bookings, gcal: S.gcal, follows: [] })],
+    ['POST', /^\/connections\/gcal\/start$/, () => { setTimeout(() => { S.connections.gcal = { connected: true }; S.connections.gmail = { connected: true }; }, 300); return ok({ authUrl: 'https://auth.example/consent', state: 's' }); }],
     ['POST', /^\/sync$/, () => ok({ lastSync: '2026-11-19T18:30:00', calcom: { ok: true, bookings: 2, blocks: 1 }, gcal: { ok: true, events: 3 }, gmail: { ok: false, skipped: 'not connected' } })],
     ['POST', /^\/contacts\/(\d+)\/opened$/, (m, b) => { const i = { id: next++, cid: +m[1], date: today, ch: 'mensaje', text: `Chat abierto en ${b.channel}` }; S.interactions.push(i); return ok(i, 201); }],
     ['GET', /^\/settings$/, () => ok(S.settings)],
@@ -51,12 +52,12 @@
       for (const [m, re, fn] of routes) { const mm = method === m && route.match(re); if (mm) return fn(mm, body); }
       return { status: 404, body: { error: { code: 'not_found', message: `Sin ruta de prueba: ${method} ${route}` } } };
     },
-    settings: async () => ({ shortcut: 'Ctrl+Shift+S', panel: false, hasKey: true, shortcutActive: false, wayland: true }),
+    settings: async () => ({ shortcut: 'Ctrl+Shift+S', panel: false, hasKey: true, googleReady: true, shortcutActive: false, wayland: true }),
     setSettings: async () => ({ ok: true, shortcutActive: false }),
     setPanel: async (on) => on,
     capture: async () => {},
     installGnomeShortcut: async () => ({ binding: '<Control><Shift>s' }),
-    openExternal: async () => {},
+    openExternal: async (u) => { window.STOLK_CALLS.push('open ' + u); },
     onCapture: (fn) => { captureCb = fn; },
     updateStatus: async () => ({ version: '0.1.1', auto: true, ready: null }),
     installUpdate: async () => { window.STOLK_CALLS.push('update:install'); },

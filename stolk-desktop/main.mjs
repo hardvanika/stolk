@@ -28,13 +28,25 @@ const settingsStore = createStore(app.getPath('userData'), 'settings.json', { sh
 let settings = settingsStore.read();
 const saveSettings = (patch) => { settings = { ...settings, ...patch }; settingsStore.write(settings); };
 // The Claude key lives only in ~/.stolk/.env, written by the server's /connections route. The shell reads it for captures.
-function apiKey() {
+function envFileValue(name) {
   try {
-    const env = fs.readFileSync(path.join(os.homedir(), '.stolk', '.env'), 'utf8');
-    const m = env.match(/^ANTHROPIC_API_KEY=(.*)$/m);
+    const env = fs.readFileSync(path.join(process.env.STOLK_HOME || path.join(os.homedir(), '.stolk'), '.env'), 'utf8');
+    const m = env.match(new RegExp(`^${name}=(.*)$`, 'm'));
     if (m) return m[1].trim().replace(/^["']|["']$/g, '');
   } catch {}
-  return process.env.ANTHROPIC_API_KEY || '';
+  return '';
+}
+function apiKey() { return envFileValue('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || ''; }
+
+// Stölk's own Google OAuth client ("Desktop app" type), written into build/google-client.json by the release
+// workflow from repository secrets. Google treats a desktop client's secret as public; it only identifies the app,
+// and the user still signs in and consents in their browser. A client the user saved in ~/.stolk/.env wins.
+function bundledGoogleClient() {
+  if (envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID) return null;
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(here, 'build', 'google-client.json'), 'utf8'));
+    return c.clientId && c.clientSecret ? c : null;
+  } catch { return null; }
 }
 
 // ---------- Local server ----------
@@ -44,8 +56,12 @@ const api = { baseUrl: '', token: crypto.randomBytes(32).toString('hex') };
 function startServer() {
   const entry = process.env.STOLK_SERVER || (app.isPackaged ? path.join(process.resourcesPath, 'server', 'main.js') : path.join(here, '..', 'server', 'dist', 'main.js'));
   if (!fs.existsSync(entry)) { console.warn(`Servidor no encontrado en ${entry}; la app arranca sin datos.`); return; }
+  const google = bundledGoogleClient();
   server = spawn(process.execPath, [entry], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', STOLK_TOKEN: api.token, STOLK_EXIT_ON_STDIN_CLOSE: '1' },
+    env: {
+      ...process.env, ELECTRON_RUN_AS_NODE: '1', STOLK_TOKEN: api.token, STOLK_EXIT_ON_STDIN_CLOSE: '1',
+      ...(google ? { GOOGLE_CLIENT_ID: google.clientId, GOOGLE_CLIENT_SECRET: google.clientSecret } : {}),
+    },
     stdio: ['pipe', 'pipe', 'inherit'], // the server exits when this process (and so its stdin) goes away
   });
   let out = '';
@@ -212,7 +228,7 @@ ipcMain.handle('api:call', async (_e, method, route, body) => {
   if (!/^\/[\w\-/?=&%.:,+@]*$/.test(route) || !['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { status: 400, body: { error: { code: 'bad_call', message: 'Llamada no válida' } } };
   return serverCall(method, route, body);
 });
-ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
+ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), googleReady: !!(bundledGoogleClient() || envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
 ipcMain.handle('settings:set', async (_e, patch) => {
   const accel = typeof patch.shortcut === 'string' ? patch.shortcut.trim() : '';
   if (accel) {

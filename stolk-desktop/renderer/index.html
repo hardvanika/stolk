@@ -173,6 +173,9 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 .update-bar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); font-size: 14px; max-width: calc(100vw - 32px); }
+.google-btn { gap: 10px; background: #fff; color: #1f1f1f; border: 1px solid #747775; font-weight: 500; }
+.google-btn:hover { background: #f2f2f2; }
+details > summary { cursor: pointer; }
 .cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
 
 .cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -833,10 +836,16 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <p class="note" style="margin:0">Solo lectura. Tus citas de Google salen en Hoy y en el Calendario. De Gmail solo se leen remitente, destinatario y fecha, para anotar en el historial cuándo hablaste con cada persona; el contenido de los correos no se lee.</p>
           ${state.gcalConnected ? `<dl class="kv"><dt>Calendario</dt><dd>${state.conn.gcal?.error ? esc(state.conn.gcal.error) : 'Conectado'}</dd><dt>Gmail</dt><dd>${state.gmailConnected ? (state.conn.gmail?.error ? esc(state.conn.gmail.error) : 'Conectado') : 'Sin conectar'}</dd></dl>
           <div class="actions"><button class="btn danger" data-action="gcal-off">Desconectar</button></div>` : `
-          <div class="field"><label for="g-client-id">Client ID de Google <span class="note">(solo la primera vez)</span></label><input id="g-client-id" autocomplete="off" placeholder="….apps.googleusercontent.com"></div>
-          <div class="field"><label for="g-client-secret">Client secret</label><input id="g-client-secret" type="password" autocomplete="off"></div>
-          <p class="note" style="margin:0">Los creas en Google Cloud Console → APIs y servicios → Credenciales (app de escritorio). Se guardan solo en <span class="mono">~/.stolk/.env</span>.</p>
-          <div class="actions"><button class="btn primary" data-action="gcal-on">Conectar con Google</button></div>`}
+          <div class="actions"><button class="btn google-btn" data-action="gcal-on"${state.gcalStarting ? ' disabled' : ''}>${GOOGLE_G}<span>${state.gcalStarting ? 'Termina en el navegador…' : 'Continuar con Google'}</span></button></div>
+          <p class="note" style="margin:0">Se abre tu navegador para que elijas la cuenta y des permiso. Stölk solo guarda el acceso en <span class="mono">~/.stolk/.env</span>.</p>
+          <details${state.shell.googleReady ? '' : ' open'}><summary class="note">Usar mi propio cliente de Google</summary>
+            <div class="form" style="margin-top:10px">
+              ${state.shell.googleReady ? '' : '<p class="note" style="margin:0">Esta versión no trae cliente de Google. Crea uno una vez y pégalo aquí.</p>'}
+              <div class="field"><label for="g-client-id">Client ID</label><input id="g-client-id" autocomplete="off" placeholder="….apps.googleusercontent.com"></div>
+              <div class="field"><label for="g-client-secret">Client secret</label><input id="g-client-secret" type="password" autocomplete="off"></div>
+              <p class="note" style="margin:0">Google Cloud Console → APIs y servicios → Credenciales → ID de cliente OAuth → App de escritorio.</p>
+            </div>
+          </details>`}
         </section>
         <section class="panel panel-pad form">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Claude</h2><span class="tag ${state.claudeOn ? '' : 'plain'}">${state.claudeOn ? 'Activo' : 'Apagado'}</span></div>
@@ -866,6 +875,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
       </section>`;
   }
+
+  // Google's "G" mark, kept in its own colours as Google's sign-in guidelines ask.
+  const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
 
   // ---------- Capture review (global shortcut) ----------
   const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['web', 'Web']];
@@ -1185,7 +1197,17 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'theme') { window.stolkTheme.set(id); render(); }
     else if (a === 'gcal-on') {
       const clientId = document.getElementById('g-client-id')?.value.trim(), clientSecret = document.getElementById('g-client-secret')?.value.trim();
-      act(async () => { const { authUrl } = await Api.post('/connections/gcal/start', clientId || clientSecret ? { clientId, clientSecret } : {}); openExternal(authUrl); }, [], 'Termina de conectar Google en el navegador y vuelve aquí');
+      act(async () => {
+        const { authUrl } = await Api.post('/connections/gcal/start', clientId || clientSecret ? { clientId, clientSecret } : {});
+        openExternal(authUrl);
+        state.gcalStarting = true;
+        // Poll until the browser round-trip lands (focus also refreshes); stop after 3 minutes.
+        const until = Date.now() + 180000;
+        const poll = setInterval(async () => {
+          try { await load('connections'); } catch {}
+          if (state.gcalConnected || Date.now() > until) { clearInterval(poll); state.gcalStarting = false; if (state.gcalConnected) { toast('Google conectado'); syncNow(false); } render(); }
+        }, 2000);
+      }, [], 'Elige tu cuenta de Google en el navegador');
     }
     else if (a === 'gcal-off') act(() => Api.del('/connections/gcal'), ['connections', 'calendar', 'today'], 'Google Calendar desconectado');
     else if (a === 'sync') syncNow(true);
