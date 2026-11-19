@@ -165,6 +165,20 @@ test('Cal.com: moving an event moves its block, a text edit does not, deleting c
 
   assert.equal((await api('DELETE', `/events/${created.body.id}`)).status, 204);
   assert.ok(cancelled.includes(created.body.calBlock.uid));
+
+  // "Bloquear esta franja en Cal.com" unchecked: no block; turning it off later cancels the block.
+  const before2 = calls.length;
+  const free = await api('POST', '/events', { title: 'Sin bloqueo', date: '2026-12-11', start: '10:00', end: '11:00', block: false });
+  assert.equal(free.status, 201);
+  assert.equal(free.body.block, false);
+  assert.equal(free.body.calBlock, null);
+  assert.equal(calls.slice(before2).filter((c) => c.method === 'POST' && c.url.endsWith('/v2/bookings')).length, 0);
+  const blocked = await api('POST', '/events', { title: 'Con bloqueo', date: '2026-12-12', start: '10:00', end: '11:00', block: true });
+  assert.equal(blocked.body.block, true);
+  const uid = blocked.body.calBlock.uid;
+  const off = await api('PATCH', `/events/${blocked.body.id}`, { block: false });
+  assert.ok(cancelled.includes(uid));
+  assert.equal(off.body.calBlock, null);
 });
 
 test('Google: sign-in stores a refresh token; calendar and Gmail headers sync', async () => {

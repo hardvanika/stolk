@@ -139,6 +139,10 @@ const MIGRATIONS: string[] = [
   ALTER TABLE events ADD COLUMN cal_block_error TEXT;
   ALTER TABLE gcal ADD COLUMN updated_at TEXT;
   `,
+  `
+  -- Per-event choice to block the slot in Cal.com ("Bloquear esta franja en Cal.com").
+  ALTER TABLE events ADD COLUMN block INTEGER NOT NULL DEFAULT 1;
+  `,
 ];
 
 export function openDb(path: string): DB {

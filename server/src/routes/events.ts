@@ -10,7 +10,7 @@ export interface EventHooks {
 }
 const noHooks: EventHooks = { onEventChanged: async () => {}, onEventDeleted: async () => {} };
 // Changing any of these moves or removes the slot, so the block must be redone.
-const BLOCK_FIELDS = ['date', 'start', 'end', 'status'];
+const BLOCK_FIELDS = ['date', 'start', 'end', 'status', 'block'];
 
 const GUEST_ST = ['invitado', 'confirmado', 'asistió', 'no vino'] as const;
 const SPEC: Spec = {
@@ -21,15 +21,24 @@ const SPEC: Spec = {
   place: { kind: 'string' },
   url: { kind: 'string' },
   status: { kind: { enum: ['planeado', 'hecho', 'cancelado'] } },
+  // Block this event's slot in Cal.com. Defaults to true; only acts when Cal.com is connected and blockEvents is on.
+  block: { kind: 'bool' },
   desc: { kind: 'string' },
 };
-const FIELDS = ['title', 'date', 'start', 'end', 'place', 'url', 'status', 'desc'];
+const FIELDS = ['title', 'date', 'start', 'end', 'place', 'url', 'status', 'desc', 'block'];
+
+/** SQLite stores booleans as 0/1. */
+function toRow(v: Record<string, any>) {
+  if ('block' in v) v.block = v.block ? 1 : 0;
+  return v;
+}
 
 export function mapEvent(db: DB, r: any) {
   const guests = (db.prepare('SELECT cid, st FROM event_guests WHERE event_id = ? ORDER BY rowid').all(r.id) as any[]).map((g) => ({ cid: g.cid, st: g.st }));
   return {
     id: r.id, title: r.title, date: r.date, start: r.start, end: r.end, place: r.place,
     url: r.url || undefined, status: r.status, desc: r.desc, guests,
+    block: !!r.block,
     calBlock: r.cal_block_uid || r.cal_block_error
       ? { uid: r.cal_block_uid ?? null, synced: !!r.cal_block_synced, error: r.cal_block_error ?? undefined }
       : null,
@@ -127,7 +136,7 @@ export function eventRoutes(r: Router, db: DB, hooks: EventHooks = noHooks) {
   r.post('/events', async ({ body }) => {
     const { guests: rawGuests, ...rest } = body ?? {};
     const guests = rawGuests !== undefined ? parseGuests(rawGuests) : [];
-    const v = validate(rest, SPEC);
+    const v = toRow(validate(rest, SPEC));
     const id = tx(db, () => {
       const keys = FIELDS.filter((k) => k in v);
       const res = db.prepare(`INSERT INTO events (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`).run(...keys.map((k) => v[k]));
@@ -144,7 +153,7 @@ export function eventRoutes(r: Router, db: DB, hooks: EventHooks = noHooks) {
     const id = intParam(params.id);
     getEvent(db, id);
     if (body && 'guests' in body) throw bad('Change guests with PUT/DELETE /events/:id/guests/:cid');
-    const v = validate(body, SPEC, true);
+    const v = toRow(validate(body, SPEC, true));
     const keys = FIELDS.filter((k) => k in v);
     const cur = getEvent(db, id);
     const moved = BLOCK_FIELDS.some((k) => k in v && v[k] !== cur[k]);
