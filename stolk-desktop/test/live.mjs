@@ -66,13 +66,13 @@ try {
   await page.waitForTimeout(600);
   const contacts = await (await fetch(`http://127.0.0.1:${port}/contacts?q=Nora`, { headers: { authorization: `Bearer ${token}` } })).json();
   check(contacts.some((c) => c.email === 'nora@brezo.example'), 'la captura se guarda en SQLite');
-  await page.evaluate(() => window.STOLK_FAKE_CAPTURE({ status: 'ok', image: '', card: { found: true, name: 'Nora Gil', role: '', company: '', email: 'nora@brezo.example', phone: '+34 600 000 000', linkedin: '', website: '', notes: '' } }));
+  await page.evaluate(() => window.STOLK_FAKE_CAPTURE({ status: 'ok', image: '', card: { found: true, name: 'Nora Gil', role: '', company: '', email: 'nora@brezo.example', phone: '+34 600 000 000', linkedin: '', website: 'brezo.example', notes: '' } }));
   await page.waitForTimeout(600);
   check(await page.locator('input[name=merge]').count() === 1, 'una captura repetida ofrece fusionar');
   await page.click('#modalForm button[type=submit]');
   await page.waitForTimeout(600);
   const again = await (await fetch(`http://127.0.0.1:${port}/contacts?q=Nora`, { headers: { authorization: `Bearer ${token}` } })).json();
-  check(again.length === 1 && again[0].phone, 'la fusión rellena el teléfono sin duplicar');
+  check(again.length === 1 && again[0].phone && again[0].web === 'brezo.example', 'la fusión rellena teléfono y web sin duplicar');
   check(await page.locator('#modalRoot .modal').count() === 0, 'la ventana de captura se cierra al guardar' + (await page.locator('#modalRoot').textContent().catch(() => '')).slice(0, 200));
   await page.keyboard.press('Escape');
   await page.evaluate(() => { location.hash = 'preguntar'; });

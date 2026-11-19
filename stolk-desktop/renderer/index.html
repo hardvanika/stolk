@@ -832,7 +832,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
 
   // ---------- Capture review (global shortcut) ----------
-  const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['website', 'Web']];
+  const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['web', 'Web']];
   async function onCapture(r) {
     state.capture = { ...(state.capture || {}), ...r };
     if (r.status === 'ok') {
@@ -854,7 +854,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <p class="note" style="margin:0">Solo se envió este recorte a Claude. Revisa los datos: nada se guarda hasta que pulses Guardar.</p>
       ${best ? `<label class="toggle"><input type="checkbox" name="merge" value="${best.contact.id}" checked><span><b>Ya tienes a ${esc(best.contact.name)}</b><br><span class="note">Coincide por ${{ email: 'email', phone: 'teléfono', name: 'nombre' }[best.matchedOn] || best.matchedOn}. Se añadirán los datos nuevos a su ficha.</span></span></label>` : ''}
       <div class="form">
-        ${CARD_FIELDS.map(([k, label]) => `<div class="field"><label for="cap-${k}">${label}</label><input id="cap-${k}" name="${k}" value="${esc(c[k] || '')}"${k === 'name' ? ' required' : ''}></div>`).join('')}
+        ${CARD_FIELDS.map(([k, label]) => `<div class="field"><label for="cap-${k}">${label}</label><input id="cap-${k}" name="${k}" value="${esc(c[k] || (k === 'web' ? c.website : '') || '')}"${k === 'name' ? ' required' : ''}></div>`).join('')}
         <div class="field"><label for="cap-notes">Notas</label><textarea id="cap-notes" name="notes">${esc(c.notes || '')}</textarea></div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-capture">Descartar</button><button class="btn primary" type="submit">Guardar</button></div>`,
@@ -862,9 +862,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
   function saveCapture(fd) {
     const card = Object.fromEntries(CARD_FIELDS.map(([k]) => [k, String(fd.get(k) || '').trim()]));
-    // Contacts have no website field in the API, so the website rides along in the notes.
-    const website = card.website; delete card.website;
-    const notes = [String(fd.get('notes') || '').trim(), website && `Web: ${website}`].filter(Boolean).join('\n');
+    const notes = String(fd.get('notes') || '').trim();
     const mergeId = Number(fd.get('merge')) || null;
     act(async () => {
       let id = mergeId;
@@ -1054,7 +1052,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       if (!c) { body.innerHTML = ''; return; }
       const text = draft();
       body.innerHTML = `
-        <dl class="kv"><dt>Teléfono</dt><dd class="mono">${esc(c.phone || 'Sin teléfono')}</dd><dt>Email</dt><dd class="mono">${esc(c.email || 'Sin email')}</dd>${c.linkedin ? `<dt>LinkedIn</dt><dd class="mono">${esc(c.linkedin)}</dd>` : ''}</dl>
+        <dl class="kv"><dt>Teléfono</dt><dd class="mono">${esc(c.phone || 'Sin teléfono')}</dd><dt>Email</dt><dd class="mono">${esc(c.email || 'Sin email')}</dd>${c.linkedin ? `<dt>LinkedIn</dt><dd class="mono">${esc(c.linkedin)}</dd>` : ''}${c.web ? `<dt>Web</dt><dd class="mono">${esc(c.web)}</dd>` : ''}</dl>
         <div class="field"><label for="meetText">Mensaje (puedes editarlo)</label><textarea id="meetText" style="min-height:120px">${esc(text)}</textarea></div>
         <p class="note" style="margin:0">El enlace es tu Cal.com en vivo: ${esc(c.name.split(' ')[0])} solo ve huecos libres, ya descontados tus eventos bloqueados.</p>
         ${sendButtons(c, text, '¿Quedamos?')}
