@@ -38,6 +38,19 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
     check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: ${v} sin scroll horizontal`);
     await page.screenshot({ path: `${out}/${label}-${v}.png` });
     if (v === 'calendario') check((await page.textContent('main')).includes('Lucía'), `${label}: Calendario se pinta con una reserva de alguien que no es contacto`);
+    if (v === 'calendario' && label === 'desktop') {
+      await page.click('.month .day[data-id="2026-11-21"]', { position: { x: 60, y: 90 } });
+      await page.waitForSelector('.day-list');
+      check((await page.textContent('.day-list')).includes('lucia@example.com'), `${label}: al pulsar un día se amplía con todo lo de ese día`);
+      await page.screenshot({ path: `${out}/${label}-dia.png` });
+      await page.click('[data-action="save-attendee"]');
+      check((await page.inputValue('#cName')) === 'Lucía Ferrer' && (await page.inputValue('#cEmail')) === 'lucia@example.com', `${label}: Guardar persona rellena la ficha con la reserva`);
+      await page.click('[data-action="close-modal"].btn');
+      await page.click('.month .day[data-id="2026-11-27"]', { position: { x: 60, y: 90 } });
+      await page.click('.modal [data-action="new-event"]');
+      check((await page.inputValue('#eDate')) === '2026-11-27', `${label}: Nuevo evento desde el día usa esa fecha`);
+      await page.click('[data-action="close-modal"].btn');
+    }
   }
   await page.evaluate(() => { location.hash = 'hoy'; });
   await page.waitForTimeout(150);
@@ -109,7 +122,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.selectOption('#claudeModel', 'claude-haiku-5-5');
   await page.waitForTimeout(200);
   check((await page.evaluate(() => window.STOLK_CALLS)).includes('PATCH /settings'), `${label}: el modelo de Claude se cambia en Ajustes`);
-  await page.click('button[data-action=gcal-on]');
+  await page.click('main button[data-action=gcal-on]');
   await page.waitForTimeout(2600);
   const gcalls = await page.evaluate(() => window.STOLK_CALLS);
   check(gcalls.includes('POST /connections/gcal/start') && gcalls.includes('open https://auth.example/consent'), `${label}: Continuar con Google abre el navegador`);
