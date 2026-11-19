@@ -20,7 +20,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const PANEL_WIDTH = 440;
 const wantsCapture = (argv) => argv.includes('--capture');
 
-if (!app.requestSingleInstanceLock()) app.quit();
+// A second launch hands over to the running Stölk and leaves at once, before anything else starts
+// (with app.quit() the rest of startup still ran, so it printed "Checking for update" and vanished).
+const isFirstInstance = app.requestSingleInstanceLock();
+if (!isFirstInstance) {
+  console.log('Stölk ya está abierto: te muestro esa ventana. Para cerrarlo del todo usa «Salir» en el icono de la barra o: pkill -x stolk');
+  app.exit(0);
+}
 // Spanish UI locale, so date pickers read dd/mm/aaaa whatever the system language is.
 app.commandLine.appendSwitch('lang', 'es-ES');
 
@@ -47,6 +53,9 @@ const saveSettings = (patch) => { settings = { ...settings, ...patch }; settings
 const onWaylandSession = process.platform === 'linux' && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
 const usingX11ForPanel = onWaylandSession && !!settings.panel;
 if (usingX11ForPanel) app.commandLine.appendSwitch('ozone-platform', 'x11');
+// On Linux the GPU process crashed on start (Wayland + Vulkan, exit 139), which left an instance with no window
+// holding the single-instance lock. Stölk draws plain UI, so software rendering is enough; settings.gpu: true opts back in.
+if (process.platform === 'linux' && settings.gpu !== true) app.disableHardwareAcceleration();
 // The Claude key lives only in ~/.stolk/.env, written by the server's /connections route. The shell reads it for captures.
 function envFileValue(name) {
   try {
@@ -95,7 +104,11 @@ function startServer() {
     }
     out = out.slice(out.lastIndexOf('\n') + 1);
   });
-  server.on('exit', (code) => { if (code) console.error(`El servidor local terminó con código ${code}`); });
+  server.on('exit', (code) => {
+    if (code) console.error(`El servidor local terminó con código ${code}`);
+    // If it died before it was ready, try again a couple of times instead of leaving the window on "Arrancando…".
+    if (!api.baseUrl && !app.isQuitting && (startServer.retries = (startServer.retries || 0) + 1) <= 2) setTimeout(startServer, 1000);
+  });
 }
 
 // ---------- Window and side panel ----------
@@ -108,7 +121,13 @@ function createWindow() {
     webPreferences: { preload: path.join(here, 'preload.cjs'), sandbox: true, contextIsolation: true },
   });
   win.loadFile(path.join(here, 'renderer', 'index.html'));
-  win.once('ready-to-show', () => { if (settings.panel) setPanel(true); win.show(); });
+  let shown = false;
+  const firstShow = () => { if (shown || win.isDestroyed()) return; shown = true; if (settings.panel) setPanel(true); win.show(); };
+  win.once('ready-to-show', firstShow);
+  // Never stay invisible: if the page never reports ready, show the window anyway.
+  setTimeout(firstShow, 4000);
+  // A crashed page reloads instead of leaving a blank window.
+  win.webContents.on('render-process-gone', (_e, d) => { console.error('La ventana se cerró:', d.reason); if (!win.isDestroyed()) win.webContents.reload(); });
   win.webContents.setWindowOpenHandler(({ url }) => { openSafe(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file:')) { e.preventDefault(); openSafe(url); } });
   win.on('close', (e) => { if (!app.isQuitting) { e.preventDefault(); win.hide(); } });
@@ -139,7 +158,11 @@ function setPanel(on) {
   buildTray();
 }
 
-function showWindow() { if (!win) return; win.show(); win.focus(); }
+function showWindow() {
+  if (!win || win.isDestroyed()) { createWindow(); return; }
+  if (win.isMinimized()) win.restore();
+  win.show(); win.focus();
+}
 
 function openSafe(url) {
   if (/^(https?:|mailto:)/i.test(url)) shell.openExternal(url);
@@ -319,7 +342,8 @@ ipcMain.handle('update:install', () => { if (updateReady) { app.isQuitting = tru
 
 // ---------- Lifecycle ----------
 app.on('second-instance', (_e, argv) => { if (wantsCapture(argv)) startCapture(); else showWindow(); });
-app.whenReady().then(() => {
+app.on('child-process-gone', (_e, d) => { if (d.type === 'GPU') console.error('Proceso GPU caído:', d.reason, d.exitCode); });
+if (isFirstInstance) app.whenReady().then(() => {
   integrateAppImage();
   startServer();
   createWindow();

@@ -1580,7 +1580,17 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     load('connections', 'contacts', 'interactions', 'projects', 'claudeMcp').then(() => { if (!typing && !modalOpen) render(); }).catch(() => {});
   });
   if (await Api.ready()) start();
-  else { main.innerHTML = '<p class="muted">Arrancando…</p>'; window.stolk?.onApiReady?.(start); }
+  else {
+    main.innerHTML = '<p class="muted">Arrancando…</p>';
+    // Don't rely only on the push: poll too, and say so if the local server never comes up.
+    let started = false, waited = 0;
+    const go = () => { if (started) return; started = true; clearInterval(poll); start(); };
+    window.stolk?.onApiReady?.(go);
+    const poll = setInterval(async () => {
+      if (await Api.ready()) return go();
+      if (++waited === 20) main.innerHTML = '<p class="muted">El servidor local de Stölk no arranca. Cierra Stölk desde el icono de la barra (Salir) y vuelve a abrirlo.</p>';
+    }, 1000);
+  }
 })();
 </script>
 </body>
