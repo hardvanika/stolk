@@ -1,10 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { openDb } from './db.js';
 import { EnvFile } from './env.js';
 import { buildRouter } from './app.js';
 import { createApiServer } from './http.js';
+import { ClaudeConnect } from './claude-connect.js';
 
 const home = process.env.STOLK_HOME || join(homedir(), '.stolk');
 const dbPath = process.env.STOLK_DB || join(home, 'stolk.db');
@@ -14,7 +16,10 @@ const token = given || randomBytes(32).toString('base64url');
 
 const db = openDb(dbPath);
 const env = new EnvFile(join(home, '.env'));
-const server = createApiServer(buildRouter({ db, env }), token);
+// dist/mcp.js sits next to this file in the bundle. Refresh the copy Claude runs, so it follows app updates.
+const claude = new ClaudeConnect({ stolkHome: home, mcpSource: join(dirname(fileURLToPath(import.meta.url)), 'mcp.js') });
+try { claude.installLauncher(); } catch (e) { console.error('No se pudo preparar el servidor para Claude:', e); }
+const server = createApiServer(buildRouter({ db, env, claude }), token);
 
 server.listen(port, '127.0.0.1', () => {
   const { port: actual } = server.address() as { port: number };

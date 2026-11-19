@@ -6,7 +6,7 @@ import { rmSync, writeFileSync } from 'node:fs';
 const dist = new URL('../dist/', import.meta.url);
 rmSync(dist, { recursive: true, force: true });
 await build({
-  entryPoints: ['src/main.ts', 'src/seed-cli.ts'],
+  entryPoints: ['src/main.ts', 'src/seed-cli.ts', 'src/mcp.ts'],
   outdir: 'dist',
   bundle: true,
   platform: 'node',
