@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('stolk', {
   apiReady: () => ipcRenderer.invoke('api:ready'),
   onApiReady: (fn) => ipcRenderer.on('api:ready', () => fn()),
   call: (method, route, body) => ipcRenderer.invoke('api:call', method, route, body),
+  setBadge: (n) => ipcRenderer.invoke('badge:set', n),
   settings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   capture: () => ipcRenderer.invoke('capture:start'),

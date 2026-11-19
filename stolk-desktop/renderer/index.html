@@ -515,9 +515,19 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     document.getElementById('railFoot').innerHTML = `<nav class="nav" aria-label="Ajustes">${VIEWS.filter((v) => v.foot).map(link).join('')}</nav>${state.gcalConnected ? '<div class="me"><span class="avatar">IV</span><span>Ivan<span class="me-sub">Google conectado</span></span></div>' : `<button class="me me-login" data-action="gcal-on">${GOOGLE_G}<span>${state.gcalStarting ? 'Termina en el navegador…' : 'Entrar con Google'}</span></button>`}`;
   }
 
+  // Dock badge: today's meetings and events, plus pending tasks due by today and today's follow-ups.
+  const badgeCount = () => {
+    const t = iso(TODAY);
+    return todayItems().length
+      + state.projects.reduce((n, p) => n + p.tasks.filter((x) => x.st === 'pendiente' && x.due && x.due <= t).length, 0)
+      + state.interactions.filter((i) => i.follow === t).length;
+  };
+  let lastBadge = null;
+  function syncBadge() { const n = badgeCount(); if (n !== lastBadge && window.stolk?.setBadge) { lastBadge = n; window.stolk.setBadge(n).catch(() => {}); } }
   function render() {
     if (!state.ready) return;
     renderNav();
+    syncBadge();
     const v = current();
     main.classList.toggle('fit', v === 'calendario');
     main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
