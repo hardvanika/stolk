@@ -213,6 +213,9 @@ test('settings and connections: keys go to .env with mode 600 and are never retu
   assert.equal(s.body.blockEvents, false);
   assert.equal(s.body.theme, 'claro');
   assert.equal((await api('PATCH', '/settings', { theme: 'rosa' })).status, 400);
+  assert.equal(s.body.captureShortcut, 'Ctrl+Shift+S');
+  assert.equal((await api('PATCH', '/settings', { captureShortcut: 'Super+K' })).body.captureShortcut, 'Super+K');
+  assert.equal((await api('PATCH', '/settings', { captureShortcut: 'banana' })).status, 400);
 
   assert.equal((await api('GET', '/connections')).body.claude.connected, false);
   const put = await api('PUT', '/connections/claude', { apiKey: 'sk-test-123' });

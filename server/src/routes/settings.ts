@@ -7,6 +7,7 @@ const DEFAULTS = {
   blockEvents: true,
   claudeOn: true,
   theme: 'claro',
+  captureShortcut: 'Ctrl+Shift+S',
   calTypes: [
     { id: 'cafe', name: 'Café', min: 30, slug: 'cafe-30' },
     { id: 'llamada', name: 'Llamada', min: 15, slug: 'llamada-15' },
@@ -17,6 +18,8 @@ const SPEC: Spec = {
   blockEvents: { kind: 'bool' },
   claudeOn: { kind: 'bool' },
   theme: { kind: { enum: ['claro', 'oscuro', 'sistema'] } },
+  // Electron accelerator syntax, e.g. "Ctrl+Shift+S". The desktop registers it.
+  captureShortcut: { kind: 'string' },
   calTypes: { kind: 'string' }, // validated by hand below
 };
 
@@ -40,6 +43,9 @@ export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
   r.patch('/settings', ({ body }) => {
     const { calTypes, ...rest } = body ?? {};
     const v = validate(rest, SPEC, true);
+    if (v.captureShortcut !== undefined && !/^((Ctrl|Control|Shift|Alt|Super|Meta|CmdOrCtrl|CommandOrControl)\+)+[A-Za-z0-9]$|^((Ctrl|Control|Shift|Alt|Super|Meta|CmdOrCtrl|CommandOrControl)\+)+F([1-9]|1[0-9]|2[0-4])$/.test(v.captureShortcut)) {
+      throw bad('captureShortcut must look like Ctrl+Shift+S');
+    }
     if (calTypes !== undefined) {
       const ok = Array.isArray(calTypes) && calTypes.every((t: any) =>
         t && typeof t.id === 'string' && typeof t.name === 'string' && Number.isInteger(t.min) && typeof t.slug === 'string');
