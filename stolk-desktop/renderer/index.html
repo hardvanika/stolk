@@ -18,7 +18,7 @@
   --warn: #111111;
   --overlay: rgba(0, 0, 0, .4);
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.08);
-  --font-display: "Cal Sans", "Inter", system-ui, sans-serif;
+  --font-display: "Quicksand", "Inter", system-ui, sans-serif;
   --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: "Inter", system-ui, sans-serif;
   --r: 12px;
@@ -86,8 +86,8 @@ main:focus, main:focus-visible { outline: none; }
 
 main { min-width: 0; max-width: 1180px; padding-block: 36px 72px; padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); }
 .view-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; margin-bottom: 28px; }
-h1 { font: 600 22px/1.2 var(--font-display); margin: 0; letter-spacing: 0; text-wrap: balance; }
-h2 { font: 600 18px/1.25 var(--font-display); margin: 0; text-wrap: balance; }
+h1 { font: 700 24px/1.2 var(--font-display); margin: 0; letter-spacing: 0; text-wrap: balance; }
+h2 { font: 700 18px/1.25 var(--font-display); margin: 0; text-wrap: balance; }
 h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .sub { color: var(--muted); margin: 6px 0 0; }
 .eyebrow { font: 500 13px var(--font-ui); color: var(--muted); }
@@ -155,6 +155,8 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .timeline { list-style: none; margin: 0; padding: 0 0 0 4px; }
 .timeline li { position: relative; padding: 0 0 18px 24px; }
 .timeline li::before { content: ""; position: absolute; left: 4px; top: 16px; bottom: 0; width: 1px; background: var(--line-strong); }
+.timeline li.opened { padding-bottom: 12px; }
+.timeline li.opened .node { width: 7px; height: 7px; left: 1px; top: 6px; }
 .timeline li:last-child::before { display: none; }
 .timeline .node { position: absolute; left: 0; top: 5px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); background: var(--surface); }
 .timeline .node.cal, .timeline .node.event { border-color: var(--ink); background: var(--ink); }
@@ -173,6 +175,52 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 .update-bar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); font-size: 14px; max-width: calc(100vw - 32px); }
+.google-btn { gap: 10px; background: #fff; color: #1f1f1f; border: 1px solid #747775; font-weight: 500; }
+.google-btn:hover { background: #f2f2f2; }
+details > summary { cursor: pointer; }
+.chat { display: flex; flex-direction: column; height: calc(100vh - 96px); min-height: 420px; max-width: 820px; margin: 0 auto; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 8px 2px 16px; }
+.chat-empty { margin: auto; text-align: center; color: var(--muted); max-width: 420px; }
+.msg { display: flex; }
+.msg.me { justify-content: flex-end; }
+.msg .bubble { max-width: 85%; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); line-height: 1.55; font-size: 15px; }
+.msg .answer, .msg .msg-text { white-space: pre-wrap; }
+.msg.me .bubble { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.msg .bubble.err { border-color: var(--line-strong); }
+.msg .answer { font-size: 15px; }
+.msg .cites { margin-top: 10px; }
+.msg .cites .tag { cursor: pointer; font: inherit; font-size: 12.5px; }
+.draft-box { margin-top: 12px; white-space: normal; }
+.draft-box textarea { min-height: 130px; }
+.draft-old { margin-top: 10px; padding: 10px 12px; border-left: 2px solid var(--line-strong); color: var(--muted); }
+.msg-files, .composer-files { display: flex; flex-wrap: wrap; gap: 6px; }
+.msg-files { margin-bottom: 8px; }
+.composer-files:empty { display: none; }
+.composer { border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.composer:focus-within { border-color: var(--ink); }
+.composer-row { display: flex; align-items: flex-end; gap: 8px; }
+.composer textarea { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; font: inherit; font-size: 15px; line-height: 1.5; padding: 7px 4px; max-height: 200px; color: var(--ink); }
+.composer textarea:focus { outline: none; }
+.icon-btn { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.icon-btn:hover { background: var(--surface-2); }
+.picker { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.picker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker-chips:empty { display: none; }
+.pick-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); font-size: 13px; color: var(--ink); }
+.pick-chip .avatar { width: 22px; height: 22px; font-size: 10px; }
+.pick-chip button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 5px; border-radius: 999px; }
+.pick-chip button:hover { color: var(--ink); }
+.picker-list { margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; max-height: 196px; overflow-y: auto; z-index: 5; }
+.picker-list[hidden] { display: none; }
+.picker-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.picker-list li .muted { font-size: 12.5px; }
+.picker-list li[aria-selected="true"], .picker-list li:hover { background: var(--surface-2); }
+.picker-list .none { color: var(--muted); cursor: default; }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 13px; }
+.file-chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; }
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-x { border: 0; background: transparent; cursor: pointer; font-size: 16px; color: var(--muted); padding: 0 2px; }
 .cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
 
 .cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -369,7 +417,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     contactFilter: 'todos',
     contactQuery: '',
     calMonth: new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
-    lastAsk: null,
+    chat: [], askFiles: [], askLoading: false, askBasic: false,
   };
   // ---------- Data from the local server (see plan/stolk-api-interface.md) ----------
   const nowHM = () => TODAY.toTimeString().slice(0, 5);
@@ -449,7 +497,19 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     main.classList.toggle('fit', v === 'calendario');
     main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
     if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
-    if (v === 'preguntar') document.getElementById('askInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) document.getElementById('askForm').requestSubmit(); });
+    if (v === 'preguntar') {
+      const input = document.getElementById('askInput');
+      const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 200) + 'px'; };
+      input?.addEventListener('input', grow);
+      input?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); document.getElementById('askForm').requestSubmit(); } });
+      input?.addEventListener('paste', (e) => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addAskFiles(fs); } });
+      const log = document.getElementById('chatLog'); if (log) log.scrollTop = log.scrollHeight;
+      document.getElementById('askAttach')?.addEventListener('click', () => document.getElementById('askFileInput').click());
+      document.getElementById('askFileInput')?.addEventListener('change', (e) => { addAskFiles([...e.target.files]); e.target.value = ''; });
+      const form = document.getElementById('askForm');
+      form?.addEventListener('dragover', (e) => e.preventDefault());
+      form?.addEventListener('drop', (e) => { e.preventDefault(); addAskFiles([...(e.dataTransfer?.files || [])]); });
+    }
   }
   window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
 
@@ -458,11 +518,12 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   const chLabel = (i) => i.ch === 'cal' ? `<span class="tag cal">Cal.com · ${esc(i.calType || '')}</span>` : `<span class="tag plain">${CHANNELS[i.ch]}</span>`;
 
   // ---------- Hoy ----------
+  const bookingName = (b) => byId(b.cid)?.name || b.attendeeName || b.attendeeEmail || 'invitado';
   function upcomingItems(days) {
     const end = iso(addDays(TODAY, days));
     const t = iso(TODAY);
     const ev = state.events.filter((e) => e.date >= t && e.date <= end).map((e) => ({ kind: 'event', date: e.date, time: e.start, title: e.title, sub: `${e.place} · ${e.guests.length} invitados`, ref: e.id }));
-    const bk = state.bookings.filter((b) => b.date >= t && b.date <= end).map((b) => ({ kind: 'cal', date: b.date, time: b.start, title: `${b.type} con ${byId(b.cid).name}`, sub: `Cal.com · ${b.start}–${b.end}`, ref: b.cid }));
+    const bk = state.bookings.filter((b) => b.date >= t && b.date <= end).map((b) => ({ kind: 'cal', date: b.date, time: b.start, title: `${b.type} con ${bookingName(b)}`, sub: `Cal.com · ${b.start}–${b.end}`, ref: b.cid }));
     return [...ev, ...bk].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   }
   const todayItems = () => state.today.map((it) => ({ ...it, action: it.src === 'event' ? 'open-event' : it.cid ? 'open-contact' : null, id: it.src === 'event' ? it.id : it.cid, c: it.cid ? byId(it.cid) : null }));
@@ -532,8 +593,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="avatar lg">${initials(c.name)}</div>
           <div class="who"><h2 style="font-size:24px">${esc(c.name)}</h2><div class="muted">${esc(c.role)} · ${esc(c.company)}</div></div>
           <div class="actions">
-            <button class="btn" data-action="log" data-id="${c.id}">Registrar contacto</button>
-            <button class="btn primary" data-action="meet" data-id="${c.id}">Quedar</button>
+            <button class="btn" data-action="edit-contact" data-id="${c.id}">Editar</button>
+            <button class="btn danger" data-action="delete-contact" data-id="${c.id}">Eliminar</button>
           </div>
         </div>
         <div class="facts">
@@ -546,9 +607,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       </section>
       <section class="panel panel-pad form" style="margin-top:16px" id="personSend">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>Conversaciones</h3>${chatButtons(c, true)}</div>
-        <p class="note" style="margin:0">Abre tu chat con ${esc(c.name.split(' ')[0])} en cada app. Sin Claude.</p>
         <div class="field"><label for="personText">Escribir mensaje</label><textarea id="personText" placeholder="Escribe aquí y elige por dónde enviarlo…"></textarea></div>
-        ${sendButtons(c, '', 'Hola')}
+        ${sendButtons(c, '', 'Hola', true)}
       </section>
       ${futureBk.length || evs.length ? `<section class="panel panel-pad" style="margin-top:16px">
         <h3 style="margin-bottom:10px">Próximo con ${esc(c.name.split(' ')[0])}</h3>
@@ -558,7 +618,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       ${connectionsHtml(c)}
       <section class="panel panel-pad" style="margin-top:16px">
         <h3 style="margin-bottom:14px">Historial</h3>
-        <ol class="timeline">${hist.map((i) => `
+        <ol class="timeline">${histRows(hist).map((i) => i.opened ? `
+          <li class="opened"><span class="node"></span><div class="when">${esc(fmt(i.date))} · ${esc(i.opened.join(', '))}</div></li>` : `
           <li><span class="node ${i.ch === 'cal' ? 'cal' : i.ch === 'evento' ? 'event' : ''}"></span>
             <div class="when">${esc(fmtLong(i.date))}</div>
             <div class="tags" style="margin-top:4px">${chLabel(i)}${i.eventId ? `<span class="tag event">${esc(state.events.find((e) => e.id === i.eventId)?.title)}</span>` : ''}</div>
@@ -568,6 +629,20 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       </section>`;
   }
 
+  // Chat buttons log "Abriste el chat de X" entries; show them as one small line per day instead of full entries.
+  const OPENED_RE = /^Abriste (?:el chat de (WhatsApp|Telegram)|(Gmail) para escribirle|su perfil de (LinkedIn))$/;
+  function histRows(hist) {
+    const out = [];
+    for (const i of hist) {
+      const m = !i.follow && !i.eventId && OPENED_RE.exec(i.text || '');
+      if (!m) { out.push(i); continue; }
+      const app = m[1] || m[2] || m[3];
+      const prev = out[out.length - 1];
+      if (prev?.opened && prev.date === i.date) { if (!prev.opened.includes(app)) prev.opened.push(app); }
+      else out.push({ date: i.date, opened: [app] });
+    }
+    return out;
+  }
   // ---------- Relaciones (solo con tus datos) ----------
   function metAt(cid) {
     const first = state.interactions.filter((i) => i.cid === cid).sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -639,7 +714,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
             <div class="detail-head">
               <div class="avatar">${initials(c.name)}</div>
               <div class="who"><h3>${esc(c.name)}</h3><div class="muted" style="font-size:13.5px">${esc(pp.role)} · ${esc(c.company)}</div></div>
-              <div class="actions"><button class="btn small" data-action="add-task" data-id="${p.id}:${c.id}">Añadir pendiente</button><button class="btn small primary" data-action="meet" data-id="${c.id}">Quedar</button></div>
+              <div class="actions"><button class="btn small" data-action="add-task" data-id="${p.id}:${c.id}">Añadir pendiente</button></div>
             </div>
             <ul class="list" style="margin-top:8px">${ts.map((t) => `
               <li class="row" style="padding-inline:0">
@@ -670,7 +745,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
         <p style="margin:0">${esc(e.desc)}</p>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div class="guest-row">${e.guests.slice(0, 6).map((g) => `<span class="avatar" title="${esc(byId(g.cid).name)}">${initials(byId(g.cid).name)}</span>`).join('')}</div>
+          <div class="guest-row">${e.guests.slice(0, 6).map((g) => `<span class="avatar" title="${esc(byId(g.cid)?.name || '')}">${initials(byId(g.cid)?.name || '?')}</span>`).join('')}</div>
           <span class="muted" style="font-size:13.5px">${confirmed}/${e.guests.length} ${e.status === 'hecho' ? 'asistieron' : 'confirmados'}</span>
         </div>
         ${e.calBlock?.error ? `<div class="cal-sync" role="alert"><span class="led off"></span>No se pudo bloquear en Cal.com: ${esc(e.calBlock.error)}. Se reintenta al sincronizar.</div>` : e.status === 'planeado' ? `<div class="cal-sync">${state.calConnected && state.blockEvents && e.calBlock?.synced ? `<span class="led"></span>Bloqueado en Cal.com · ${fmt(e.date)} ${e.start}–${e.end}` : state.calConnected && state.blockEvents ? '<span class="led off"></span>Pendiente de bloquear en Cal.com' : '<span class="led off"></span>Sin bloquear en Cal.com'}</div>` : ''}
@@ -696,9 +771,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const out = [];
     for (const e of state.events) if (e.date === dateStr) out.push({ cls: 'event', label: `${e.start} ${e.title}`, action: 'open-event', id: e.id });
     for (const e of state.events) if (e.date === dateStr && e.status === 'planeado' && state.calConnected && state.blockEvents) out.push({ cls: 'block', label: 'Bloqueado en Cal.com', action: 'open-event', id: e.id });
-    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${byId(b.cid).name.split(' ')[0]}`, action: 'open-contact', id: b.cid });
+    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${bookingName(b).split(' ')[0]}`, action: byId(b.cid) ? 'open-contact' : null, id: b.cid });
     if (state.gcalConnected) for (const g of state.gcal) if (g.date === dateStr) out.push({ cls: 'gcal', label: `${g.start} ${g.title}`, action: 'gcal', id: g.id });
-    for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${byId(i.cid).name.split(' ')[0]}`, action: 'open-contact', id: i.cid });
+    for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${(byId(i.cid)?.name || 'contacto').split(' ')[0]}`, action: 'open-contact', id: i.cid });
     const t = (x) => /^\d\d:\d\d/.test(x.label) ? x.label.slice(0, 5) : x.cls === 'block' ? x.label : '99';
     return out.sort((a, b) => t(a).localeCompare(t(b)));
   }
@@ -745,51 +820,92 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <ul class="list panel agenda">${days.join('') || '<li class="empty">Nada este mes.</li>'}</ul>`;
   }
 
-  // ---------- Preguntar (local RAG, simulated on example data) ----------
+  // ---------- Preguntar: a chat with Claude through the local server (/ask) ----------
+  const ASK_MAX_FILES = 5, ASK_MAX_BYTES = 10 * 1024 * 1024;
+  const askCites = (r) => (r.cites || []).map((x) => {
+    if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, badge: initials(c.name) }; }
+    if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, badge: 'Ev' }; }
+    if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, badge: 'Pr' }; }
+    return null;
+  }).filter(Boolean);
   async function claudeAsk(q) {
-    state.lastAsk = { q, loading: true };
+    const files = state.askFiles.splice(0);
+    const history = state.chat.filter((m) => !m.error && m.text).slice(-20).map((m) => ({ role: m.role, text: m.text }));
+    state.chat.push({ role: 'user', text: q, files: files.map((f) => ({ name: f.name, mediaType: f.mediaType, url: f.url })) });
+    state.askLoading = true;
     render();
+    const body = { question: q };
+    if (history.length && !state.askBasic) body.history = history;
+    if (files.length) body.attachments = files.map((f) => ({ name: f.name, mediaType: f.mediaType, data: f.data }));
     try {
-      const r = await Api.post('/ask', { question: q });
-      const cites = (r.cites || []).map((x) => {
-        if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, meta: [c.role, c.company].filter(Boolean).join(' · '), badge: initials(c.name) }; }
-        if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, meta: `Evento · ${fmt(e.date)}`, badge: 'Ev' }; }
-        if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, meta: 'Proyecto', badge: 'Pr' }; }
-        return null;
-      }).filter(Boolean);
-      state.lastAsk = { q, answer: r.answer, cites, draft: r.draft || null, model: r.model };
+      let r;
+      try { r = await Api.post('/ask', body); }
+      catch (err) {
+        // Older server without history support: ask again with just the question (files still need the newer server).
+        if (!/unknown field: history/i.test(err.message)) throw err;
+        state.askBasic = true; delete body.history; r = await Api.post('/ask', body);
+      }
+      state.chat.push({ role: 'assistant', text: r.answer || '', cites: askCites(r), draft: r.draft || null });
     } catch (err) {
-      state.lastAsk = { q, error: err.message };
+      const msg = /unknown field: attachments/i.test(err.message) ? 'Tu servidor de Stölk aún no acepta archivos. Actualiza Stölk y vuelve a probar.' : err.message;
+      state.chat.push({ role: 'assistant', error: msg });
     }
+    state.askLoading = false;
     render();
   }
+  function readAskFile(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => { const url = String(fr.result); resolve({ name: file.name, mediaType: file.type || 'application/octet-stream', size: file.size, url, data: url.slice(url.indexOf(',') + 1) }); };
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(file);
+    });
+  }
+  async function addAskFiles(list) {
+    for (const file of list) {
+      const total = state.askFiles.reduce((n, f) => n + f.size, 0) + file.size;
+      if (state.askFiles.length >= ASK_MAX_FILES) { toast(`Máximo ${ASK_MAX_FILES} archivos por mensaje`); break; }
+      if (total > ASK_MAX_BYTES) { toast('Los archivos pasan de 10 MB'); break; }
+      if (!/^(image\/(png|jpeg|webp|gif)|application\/pdf|text\/)/.test(file.type)) { toast(`${file.name}: solo imágenes, PDF o texto`); continue; }
+      state.askFiles.push(await readAskFile(file));
+    }
+    renderComposerFiles();
+  }
+  const fileChip = (f, i, removable) => `<span class="file-chip">${/^image\//.test(f.mediaType) && f.url ? `<img src="${f.url}" alt="">` : '<span class="file-ico" aria-hidden="true">▤</span>'}<span class="file-name">${esc(f.name)}</span>${removable ? `<button type="button" class="file-x" data-remove-file="${i}" aria-label="Quitar ${esc(f.name)}">×</button>` : ''}</span>`;
+  function renderComposerFiles() {
+    const el = document.getElementById('askFiles');
+    if (el) el.innerHTML = state.askFiles.map((f, i) => fileChip(f, i, true)).join('');
+  }
   function viewAsk() {
-    const a = state.lastAsk;
-    const dc = a?.draft && byId(a.draft.cid);
+    const lastDraft = state.chat.map((m) => !!m.draft).lastIndexOf(true);
+    const msgs = state.chat.map((m, idx) => {
+      if (m.role === 'user') return `<div class="msg me"><div class="bubble">${m.files?.length ? `<div class="msg-files">${m.files.map((f, i) => fileChip(f, i, false)).join('')}</div>` : ''}<div class="msg-text">${esc(m.text)}</div></div></div>`;
+      if (m.error) return `<div class="msg"><div class="bubble err">${esc(m.error)}${/clave|activ|conect/i.test(m.error) ? ' <a href="#integraciones">Revisa Claude en Ajustes.</a>' : ''}</div></div>`;
+      const dc = m.draft && byId(m.draft.cid);
+      return `<div class="msg"><div class="bubble">
+          ${m.text ? `<div class="answer">${esc(m.text)}</div>` : ''}
+          ${dc ? (idx === lastDraft ? `<div class="form draft-box" id="askDraft" data-cid="${dc.id}">
+              <div class="field"><label for="askDraftText">Mensaje para ${esc(dc.name)}: edítalo antes de enviar</label><textarea id="askDraftText">${esc(m.draft.text)}</textarea></div>
+              ${sendButtons(dc, m.draft.text, 'Hola')}</div>` : `<div class="draft-old"><b>Mensaje para ${esc(dc.name)}</b><br>${esc(m.draft.text)}</div>`) : ''}
+          ${m.cites?.length ? `<div class="tags cites">${m.cites.map((c) => `<button type="button" class="tag" data-action="${c.action}" data-id="${c.id}">${esc(c.title)}</button>`).join('')}</div>` : ''}
+        </div></div>`;
+    }).join('');
     return `
-      <div class="ask-wrap">
-      <div class="view-head"><div><h1>Preguntar</h1></div></div>
-      <form class="ask-box" id="askForm">
-        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude"></textarea>
-        <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit"${a?.loading ? ' disabled' : ''}>Enviar</button></div>
-      </form>
-      ${a?.q ? `<p class="muted ask-q" style="margin:20px 0 0;white-space:pre-wrap">Tu pregunta: ${esc(a.q)}</p>` : ''}
-      ${a?.loading ? '<p class="muted ask-loading" style="margin-top:20px" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</p>' : ''}
-      ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|activ|conect/i.test(a.error) ? '<p class="note">Revisa Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
-      ${a?.draft && dc ? `
-        <section class="panel panel-pad form" style="margin-top:20px" id="askDraft" data-cid="${dc.id}">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h2>Mensaje para ${esc(dc.name)}</h2><span class="tag cal">Claude</span></div>
-          <div class="field"><label for="askDraftText">Edítalo antes de enviar</label><textarea id="askDraftText" style="min-height:150px">${esc(a.draft.text)}</textarea></div>
-          ${sendButtons(dc, a.draft.text, 'Hola')}
-        </section>` : ''}
-      ${a?.answer ? `
-        <section class="panel panel-pad" style="margin-top:${a.draft ? 14 : 20}px"><div class="answer" style="white-space:pre-wrap">${esc(a.answer)}</div></section>
-        ${a.cites.length ? `<ul class="list panel" style="margin-top:14px">${a.cites.map((c, i) => `
-          <li class="row clickable" data-action="${c.action}" data-id="${c.id}">
-            <div class="avatar">${esc(c.badge)}</div>
-            <div style="min-width:0"><div class="title"><span class="cite">[${i + 1}]</span> ${esc(c.title)}</div><div class="meta">${esc(c.meta)}</div></div>
-            <span class="muted">›</span>
-          </li>`).join('')}</ul>` : ''}` : ''}
+      <div class="chat">
+        <div class="chat-head"><h1>Preguntar</h1>${state.chat.length ? '<button class="btn ghost small" data-action="chat-new">Nueva conversación</button>' : ''}</div>
+        <div class="chat-log" id="chatLog" aria-live="polite">
+          ${msgs || '<div class="chat-empty"><p>Pregunta por tu gente, pide un mensaje o adjunta una foto o un documento.</p></div>'}
+          ${state.askLoading ? '<div class="msg"><div class="bubble muted" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</div></div>' : ''}
+        </div>
+        <form class="composer" id="askForm">
+          <div class="composer-files" id="askFiles">${state.askFiles.map((f, i) => fileChip(f, i, true)).join('')}</div>
+          <div class="composer-row">
+            <button type="button" class="icon-btn" id="askAttach" aria-label="Adjuntar fotos o documentos" title="Adjuntar fotos o documentos">+</button>
+            <input type="file" id="askFileInput" multiple accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/*" hidden>
+            <textarea id="askInput" rows="1" placeholder="Escribe a Claude…" aria-label="Tu mensaje para Claude"></textarea>
+            <button class="btn primary send" type="submit" aria-label="Enviar"${state.askLoading ? ' disabled' : ''}>Enviar</button>
+          </div>
+        </form>
       </div>`;
   }
 
@@ -834,10 +950,16 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <p class="note" style="margin:0">Solo lectura. Tus citas de Google salen en Hoy y en el Calendario. De Gmail solo se leen remitente, destinatario y fecha, para anotar en el historial cuándo hablaste con cada persona; el contenido de los correos no se lee.</p>
           ${state.gcalConnected ? `<dl class="kv"><dt>Calendario</dt><dd>${state.conn.gcal?.error ? esc(state.conn.gcal.error) : 'Conectado'}</dd><dt>Gmail</dt><dd>${state.gmailConnected ? (state.conn.gmail?.error ? esc(state.conn.gmail.error) : 'Conectado') : 'Sin conectar'}</dd></dl>
           <div class="actions"><button class="btn danger" data-action="gcal-off">Desconectar</button></div>` : `
-          <div class="field"><label for="g-client-id">Client ID de Google <span class="note">(solo la primera vez)</span></label><input id="g-client-id" autocomplete="off" placeholder="….apps.googleusercontent.com"></div>
-          <div class="field"><label for="g-client-secret">Client secret</label><input id="g-client-secret" type="password" autocomplete="off"></div>
-          <p class="note" style="margin:0">Los creas en Google Cloud Console → APIs y servicios → Credenciales (app de escritorio). Se guardan solo en <span class="mono">~/.stolk/.env</span>.</p>
-          <div class="actions"><button class="btn primary" data-action="gcal-on">Conectar con Google</button></div>`}
+          <div class="actions"><button class="btn google-btn" data-action="gcal-on"${state.gcalStarting ? ' disabled' : ''}>${GOOGLE_G}<span>${state.gcalStarting ? 'Termina en el navegador…' : 'Continuar con Google'}</span></button></div>
+          <p class="note" style="margin:0">Se abre tu navegador para que elijas la cuenta y des permiso. Stölk solo guarda el acceso en <span class="mono">~/.stolk/.env</span>.</p>
+          <details${state.shell.googleReady ? '' : ' open'}><summary class="note">Usar mi propio cliente de Google</summary>
+            <div class="form" style="margin-top:10px">
+              ${state.shell.googleReady ? '' : '<p class="note" style="margin:0">Esta versión no trae cliente de Google. Crea uno una vez y pégalo aquí.</p>'}
+              <div class="field"><label for="g-client-id">Client ID</label><input id="g-client-id" autocomplete="off" placeholder="….apps.googleusercontent.com"></div>
+              <div class="field"><label for="g-client-secret">Client secret</label><input id="g-client-secret" type="password" autocomplete="off"></div>
+              <p class="note" style="margin:0">Google Cloud Console → APIs y servicios → Credenciales → ID de cliente OAuth → App de escritorio.</p>
+            </div>
+          </details>`}
         </section>
         <section class="panel panel-pad form">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2>Claude</h2><span class="tag ${state.claudeOn ? '' : 'plain'}">${state.claudeOn ? 'Activo' : 'Apagado'}</span></div>
@@ -847,6 +969,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
             <span class="note">Se guarda solo en <span class="mono">~/.stolk/.env</span> (ANTHROPIC_API_KEY).</span></div>
           <div class="field"><label for="claudeModel">Modelo</label><select id="claudeModel" style="max-width:280px">${[['claude-opus-5-5', 'Opus 5.5 (mejor respuesta)'], ['claude-sonnet-5-5', 'Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Haiku 5.5 (más rápido y barato)']].map(([v, l]) => `<option value="${v}"${state.claudeModel === v ? ' selected' : ''}>${l}</option>`).join('')}</select><span class="note">Para Preguntar. Leer capturas usa siempre Opus 5.5.</span></div>
           <div class="actions">${state.claudeOn ? '<button class="btn danger" data-action="claude-off">Apagar</button>' : '<button class="btn primary" data-action="claude-on">Activar</button>'}</div>
+        </section>
+        <section class="panel panel-pad form">
+          <h2>Mensajes</h2>
+          <div class="field"><label for="waMode">Abrir WhatsApp en</label><select id="waMode" style="max-width:280px"><option value="web"${waMode() === 'web' ? ' selected' : ''}>WhatsApp Web (navegador)</option><option value="app"${waMode() === 'app' ? ' selected' : ''}>App de WhatsApp</option></select><span class="note">En Linux no hay app de WhatsApp, así que se usa WhatsApp Web.</span></div>
         </section>
         <section class="panel panel-pad">
           <h2 style="margin-bottom:12px">Tus tipos de reunión</h2>
@@ -869,6 +995,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       </section>`;
   }
 
+  // Google's "G" mark, kept in its own colours as Google's sign-in guidelines ask.
+  const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
   // Claude desktop and Claude Code can write to Stölk through its MCP server ("pásalo a Stölk").
   function viewClaudeMcp() {
     const m = state.claudeMcp;
@@ -975,13 +1103,13 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
         <div class="field"><label for="mText">Qué hablasteis</label><textarea id="mText" name="text" required placeholder="Le pasé el deck. Quiere verlo con su socio."></textarea></div>
         <div class="form-row">
-          <div class="field"><label for="mDate">Fecha</label><input id="mDate" type="date" name="date" value="${iso(TODAY)}"></div>
+          <div class="field"><label for="mDate">Fecha</label><input id="mDate" type="date" name="date"><span class="note">Si la dejas vacía, hoy.</span></div>
           <div class="field"><label for="mFollow">Seguimiento (opcional)</label><input id="mFollow" type="date" name="follow"></div>
         </div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>`,
     (fd) => {
-      const body = { cid: Number(fd.get('cid')), date: fd.get('date'), ch: fd.get('ch'), text: fd.get('text') };
+      const body = { cid: Number(fd.get('cid')), date: fd.get('date') || iso(TODAY), ch: fd.get('ch'), text: fd.get('text') };
       if (fd.get('follow')) body.follow = fd.get('follow');
       state.selectedContact = body.cid;
       act(async () => { await Api.post('/interactions', body); closeModal(); }, ['interactions', 'contacts', 'today'], 'Guardado en el historial');
@@ -995,6 +1123,44 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       .filter((s) => !taken.includes(s) && !blocked.some((e) => s >= e.start && s < e.end));
   }
 
+  // People picker: type to filter, click or Enter to add, × to remove. Hidden inputs keep FormData.getAll(name) working.
+  const peoplePicker = (id, name, placeholder) => `
+    <div class="picker" data-picker="${id}" data-name="${name}">
+      <div class="picker-chips" id="${id}Chips"></div>
+      <input id="${id}" type="search" autocomplete="off" placeholder="${esc(placeholder)}" role="combobox" aria-expanded="false" aria-controls="${id}List" aria-autocomplete="list">
+      <ul class="picker-list" id="${id}List" role="listbox" hidden></ul>
+    </div>`;
+  function wirePicker(id) {
+    const root = modalRoot.querySelector(`[data-picker="${id}"]`);
+    const name = root.dataset.name;
+    const input = document.getElementById(id), list = document.getElementById(`${id}List`), chips = document.getElementById(`${id}Chips`);
+    const chosen = [];
+    let active = 0, matches = [];
+    const norm = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const drawChips = () => {
+      chips.innerHTML = chosen.map((cid) => { const c = byId(cid); return c ? `<span class="pick-chip"><span class="avatar">${initials(c.name)}</span>${esc(c.name)}<button type="button" data-remove="${cid}" aria-label="Quitar a ${esc(c.name)}">×</button><input type="hidden" name="${name}" value="${cid}"></span>` : ''; }).join('');
+    };
+    const drawList = () => {
+      const q = norm(input.value.trim());
+      matches = state.contacts.filter((c) => !chosen.includes(c.id) && (!q || norm(`${c.name} ${c.company || ''} ${c.role || ''} ${c.email || ''}`).includes(q))).slice(0, 8);
+      active = Math.min(active, Math.max(matches.length - 1, 0));
+      list.innerHTML = matches.length ? matches.map((c, i) => `<li role="option" data-cid="${c.id}" aria-selected="${i === active}"><span class="avatar">${initials(c.name)}</span><span>${esc(c.name)}${c.company ? ` <span class="muted">· ${esc(c.company)}</span>` : ''}</span></li>`).join('') : `<li class="none">${state.contacts.length ? 'Nadie con ese nombre' : 'Aún no tienes personas'}</li>`;
+      list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    };
+    const hide = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); };
+    const add = (cid) => { if (!chosen.includes(cid)) chosen.push(cid); input.value = ''; active = 0; drawChips(); drawList(); input.focus(); };
+    input.addEventListener('focus', drawList);
+    input.addEventListener('input', () => { active = 0; drawList(); });
+    input.addEventListener('blur', () => setTimeout(hide, 120));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (list.hidden) drawList(); active = (active + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % Math.max(matches.length, 1); drawList(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (matches[active]) add(matches[active].id); }
+      else if (e.key === 'Escape' && !list.hidden) { e.stopPropagation(); hide(); }
+      else if (e.key === 'Backspace' && !input.value && chosen.length) { chosen.pop(); drawChips(); drawList(); }
+    });
+    list.addEventListener('mousedown', (e) => { const li = e.target.closest('li[data-cid]'); if (li) { e.preventDefault(); add(Number(li.dataset.cid)); } });
+    chips.addEventListener('click', (e) => { const b = e.target.closest('[data-remove]'); if (b) { chosen.splice(chosen.indexOf(Number(b.dataset.remove)), 1); drawChips(); input.focus(); } });
+  }
   function modalEvent() {
     openModal(`
       <h2>Nuevo evento</h2>
@@ -1009,7 +1175,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="field"><label for="eEnd">Acaba</label><input id="eEnd" type="time" name="end" value="21:00"></div>
         </div>
         <div class="field"><label for="eUrl">Enlace del evento</label><input id="eUrl" name="url" type="url" placeholder="https://lu.ma/… o https://meetup.com/…"></div>
-        <div class="field"><label for="eGuests">Invitados</label><select id="eGuests" name="guests" multiple size="5">${contactOptions(null)}</select><span class="note">Ctrl/Cmd + clic para elegir varios.</span></div>
+        <div class="field"><label for="eGuests">Invitados</label>${peoplePicker('eGuests', 'guests', 'Busca por nombre o empresa')}</div>
         <label class="toggle"><input type="checkbox" name="block" ${state.calConnected && state.blockEvents ? 'checked' : ''} ${state.calConnected ? '' : 'disabled'}><span>Bloquear esta franja en Cal.com</span></label>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear evento</button></div>`,
@@ -1018,6 +1184,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       act(async () => { await Api.post('/events', ev); closeModal(); location.hash = '#eventos'; }, ['events', 'today', 'calendar'],
         ev.block ? `Creado y bloqueado en Cal.com: ${fmt(ev.date)} ${ev.start}–${ev.end}` : 'Evento creado');
     });
+    wirePicker('eGuests');
   }
 
   async function modalEventDetail(id) {
@@ -1045,26 +1212,41 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     document.getElementById('addGuest').addEventListener('change', (ev) => { if (!ev.target.value) return; act(async () => { await Api.put(`/events/${id}/guests/${ev.target.value}`, { st: e.status === 'hecho' ? 'asistió' : 'invitado' }); }, ['events']).then((ok) => ok && modalEventDetail(id)); });
   }
 
-  function modalNewContact() {
+  // New or edit: the same form. Only fields that changed are sent on edit.
+  function modalContact(c) {
+    const v = (k) => esc(c?.[k] || '');
     openModal(`
-      <h2>Nuevo contacto</h2>
+      <h2>${c ? 'Editar persona' : 'Nuevo contacto'}</h2>
       <div class="form">
         <div class="form-row">
-          <div class="field"><label for="cName">Nombre</label><input id="cName" name="name" required></div>
-          <div class="field"><label for="cEmail">Email</label><input id="cEmail" name="email" type="email"></div>
+          <div class="field"><label for="cName">Nombre</label><input id="cName" name="name" required value="${v('name')}"></div>
+          <div class="field"><label for="cRole">Cargo</label><input id="cRole" name="role" value="${v('role')}"></div>
         </div>
         <div class="form-row">
-          <div class="field"><label for="cRole">Cargo</label><input id="cRole" name="role"></div>
-          <div class="field"><label for="cCompany">Empresa</label><input id="cCompany" name="company"></div>
+          <div class="field"><label for="cCompany">Empresa</label><input id="cCompany" name="company" value="${v('company')}"></div>
+          <div class="field"><label for="cEmail">Email</label><input id="cEmail" name="email" type="email" value="${v('email')}"></div>
         </div>
-        <div class="field"><label for="cTags">Etiquetas</label><input id="cTags" name="tags" placeholder="inversor, IA"></div>
-        <div class="field"><label for="cNotes">Notas</label><textarea id="cNotes" name="notes"></textarea></div>
+        <div class="form-row">
+          <div class="field"><label for="cPhone">Teléfono</label><input id="cPhone" name="phone" type="tel" value="${v('phone')}"></div>
+          <div class="field"><label for="cLinkedin">LinkedIn</label><input id="cLinkedin" name="linkedin" placeholder="linkedin.com/in/…" value="${v('linkedin')}"></div>
+        </div>
+        <div class="field"><label for="cTags">Etiquetas</label><input id="cTags" name="tags" placeholder="inversor, IA" value="${esc((c?.tags || []).join(', '))}"></div>
+        <div class="field"><label for="cNotes">Notas</label><textarea id="cNotes" name="notes">${v('notes')}</textarea></div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>`,
     (fd) => {
-      const c = { name: fd.get('name'), email: fd.get('email'), role: fd.get('role') || '', company: fd.get('company') || '', tags: String(fd.get('tags')).split(',').map((s) => s.trim()).filter(Boolean), notes: fd.get('notes') };
-      act(async () => { const made = await Api.post('/contacts', c); state.selectedContact = made.id; state.mobileDetail = true; closeModal(); location.hash = '#contactos'; }, ['contacts'], 'Persona creada');
+      const next = { name: String(fd.get('name')).trim(), role: String(fd.get('role') || '').trim(), company: String(fd.get('company') || '').trim(), email: String(fd.get('email') || '').trim(), phone: String(fd.get('phone') || '').trim(), linkedin: String(fd.get('linkedin') || '').trim(), tags: String(fd.get('tags')).split(',').map((t) => t.trim()).filter(Boolean), notes: String(fd.get('notes') || '') };
+      if (!c) return act(async () => { const made = await Api.post('/contacts', next); state.selectedContact = made.id; state.mobileDetail = true; closeModal(); location.hash = '#contactos'; }, ['contacts'], 'Persona creada');
+      const patch = Object.fromEntries(Object.entries(next).filter(([k, val]) => JSON.stringify(val) !== JSON.stringify(c[k] ?? (k === 'tags' ? [] : ''))));
+      act(async () => { if (Object.keys(patch).length) await Api.patch(`/contacts/${c.id}`, patch); closeModal(); }, ['contacts'], 'Cambios guardados');
     });
+  }
+  function modalDeleteContact(c) {
+    openModal(`
+      <h2>¿Eliminar a ${esc(c.name)}?</h2>
+      <p style="margin:0">Se borran su ficha y su historial de Stölk. No se puede deshacer.</p>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn danger" type="submit">Eliminar</button></div>`,
+    () => act(async () => { await Api.del(`/contacts/${c.id}`); state.selectedContact = null; state.mobileDetail = false; closeModal(); }, ['contacts', 'interactions', 'relations', 'events', 'projects', 'today'], 'Persona eliminada'));
   }
 
   // One-click drafts per channel (see research/envio-enlace-cal.md). Nothing is sent without Ivan's click.
@@ -1073,22 +1255,49 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const enc = encodeURIComponent;
     const k = small ? 'btn small' : 'btn';
     const b = [];
-    if (digits) b.push(`<a class="${k}" href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a>`);
+    if (digits) b.push(`<a class="${k}" href="${waLink(digits)}" target="_blank" rel="noopener">WhatsApp</a>`);
     if (digits) b.push(`<a class="${k}" href="https://t.me/+${digits}" target="_blank" rel="noopener">Telegram</a>`);
     if (c.email) b.push(`<a class="${k}" href="https://mail.google.com/mail/u/0/#search/${enc(`from:${c.email} OR to:${c.email}`)}" target="_blank" rel="noopener">Gmail</a>`);
     if (c.linkedin) b.push(`<a class="${k}" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>`);
     return `<div class="chat-btns">${b.join('')}</div>`;
   }
-  function sendButtons(c, text, subject) {
+  // WhatsApp: on Linux there is no desktop app, so default to WhatsApp Web (skips the "open the app" landing).
+  const waModeDefault = () => /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) ? 'web' : 'app';
+  const waMode = () => { try { return localStorage.getItem('stolk-wa') || waModeDefault(); } catch { return waModeDefault(); } };
+  const waLink = (digits, text) => waMode() === 'web'
+    ? `https://web.whatsapp.com/send?phone=${digits}${text !== undefined ? `&text=${encodeURIComponent(text)}` : ''}`
+    : `https://wa.me/${digits}${text !== undefined ? `?text=${encodeURIComponent(text)}` : ''}`;
+  function sendButtons(c, text, subject, withEdit) {
     const digits = (c.phone || '').replace(/\D/g, '');
     const enc = encodeURIComponent;
     const b = [];
-    if (digits) b.push(`<a class="btn primary" href="https://wa.me/${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="WhatsApp">WhatsApp</a>`);
+    if (digits) b.push(`<a class="btn primary" href="${waLink(digits, text)}" target="_blank" rel="noopener" data-sent="WhatsApp">WhatsApp</a>`);
     if (digits) b.push(`<a class="btn" href="https://t.me/+${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="Telegram">Telegram</a>`);
     if (c.email) b.push(`<a class="btn" href="https://mail.google.com/mail/?view=cm&fs=1&to=${enc(c.email)}&su=${enc(subject)}&body=${enc(text)}" target="_blank" rel="noopener" data-sent="Gmail">Gmail</a>`);
     if (c.linkedin) b.push(`<a class="btn" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener" data-sent="LinkedIn" data-copy-first>LinkedIn (copia y abre perfil)</a>`);
     b.push('<button type="button" class="btn" data-copy-text>Copiar</button>');
+    if (withEdit) b.push('<button type="button" class="btn" data-edit-text>Editar con Claude</button><button type="button" class="btn ghost" data-undo-edit hidden>Deshacer</button>');
     return `<div class="actions">${b.join('')}</div><p class="note" style="margin:0">Se abre la app con el mensaje escrito. Tú pulsas Enviar.</p>`;
+  }
+  // Claude rewrites the typed message in place (or drafts one if the box is empty). Nothing is sent.
+  async function editWithClaude(btn, c, ta) {
+    const before = ta.value.trim();
+    const first = c.name.split(' ')[0];
+    const question = before
+      ? `Mejora este mensaje para ${c.name} (id ${c.id}): corrige faltas y que suene natural, en mi tono, sin cambiar lo que quiero decir ni alargarlo. Mensaje: «${before}»`
+      : `Escribe un mensaje corto para ${c.name} (id ${c.id}) retomando el contacto según nuestro historial.`;
+    btn.disabled = true; btn.textContent = 'Editando…'; ta.readOnly = true;
+    try {
+      const r = await Api.post('/ask', { question });
+      const text = r.draft?.cid === c.id ? r.draft.text : '';
+      if (!text) { toast(r.answer || `Claude no ha devuelto un mensaje para ${first}`); return; }
+      ta.dataset.before = ta.value;
+      ta.value = text;
+      const undo = btn.parentElement.querySelector('[data-undo-edit]');
+      if (undo) undo.hidden = false;
+      ta.focus();
+    } catch (err) { toast(err.message); }
+    finally { btn.disabled = false; btn.textContent = 'Editar con Claude'; ta.readOnly = false; }
   }
   async function handleSendClick(e, c, getText) {
     if (e.target.closest('[data-copy-text]') || e.target.closest('[data-copy-first]')) {
@@ -1147,13 +1356,14 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <div class="form">
         <div class="field"><label for="pTitle">Nombre</label><input id="pTitle" name="title" required placeholder="Hackathon de primavera"></div>
         <div class="field"><label for="pDesc">Descripción rápida</label><textarea id="pDesc" name="desc" placeholder="Qué es y qué tiene que pasar."></textarea></div>
-        <div class="field"><label for="pPeople">Personas</label><select id="pPeople" name="people" multiple size="5">${contactOptions(null)}</select><span class="note">Ctrl/Cmd + clic para elegir varias.</span></div>
+        <div class="field"><label for="pPeople">Personas</label>${peoplePicker('pPeople', 'people', 'Busca por nombre o empresa')}</div>
       </div>
       <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear proyecto</button></div>`,
     (fd) => {
       const p = { title: fd.get('title'), desc: fd.get('desc') || '', status: 'En marcha', people: fd.getAll('people').map((x) => ({ cid: Number(x), role: 'Colaborador' })) };
       act(async () => { const made = await Api.post('/projects', p); state.selectedProject = made.id; state.mobileProject = true; closeModal(); location.hash = '#proyectos'; }, ['projects'], 'Proyecto creado');
     });
+    wirePicker('pPeople');
   }
   function modalAddTask(pid, cid) {
     const c = byId(cid);
@@ -1183,6 +1393,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'filter') { state.contactFilter = id; render(); }
     else if (a === 'open-event') modalEventDetail(Number(id));
     else if (a === 'log') modalLog(id ? Number(id) : state.selectedContact);
+    else if (a === 'edit-contact') modalContact(byId(Number(id)));
+    else if (a === 'delete-contact') modalDeleteContact(byId(Number(id)));
     else if (a === 'new-event') modalEvent();
     else if (a === 'meet') modalMeet(id ? Number(id) : null);
     else if (a === 'mcp-on') act(() => Api.post(`/integrations/claude/${id}`), ['claudeMcp'], id === 'desktop' ? 'Conectado. Reinicia Claude para verlo.' : 'Conectado a Claude Code');
@@ -1209,13 +1421,24 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       const [eid, cid] = id.split(':').map(Number);
       act(() => Api.put(`/events/${eid}/guests/${cid}`, { st: 'invitado' }), ['events'], `${byId(cid).name.split(' ')[0]} invitado`).then((ok) => ok && modalEventDetail(eid));
     }
-    else if (a === 'new-contact') modalNewContact();
+    else if (a === 'new-contact') modalContact(null);
     else if (a === 'month') { const n = Number(id); state.calMonth = n === 0 ? new Date(TODAY.getFullYear(), TODAY.getMonth(), 1) : new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + n, 1); act(() => {}, ['calendar']); }
     else if (a === 'gcal') { const g = state.gcal.find((x) => x.id === id); toast(`${g.title} · ${g.start}–${g.end}${g.place ? ' · ' + g.place : ''} (Google Calendar)`); }
+    else if (a === 'chat-new') { state.chat = []; state.askFiles = []; render(); }
     else if (a === 'theme') { window.stolkTheme.set(id); render(); }
     else if (a === 'gcal-on') {
       const clientId = document.getElementById('g-client-id')?.value.trim(), clientSecret = document.getElementById('g-client-secret')?.value.trim();
-      act(async () => { const { authUrl } = await Api.post('/connections/gcal/start', clientId || clientSecret ? { clientId, clientSecret } : {}); openExternal(authUrl); }, [], 'Termina de conectar Google en el navegador y vuelve aquí');
+      act(async () => {
+        const { authUrl } = await Api.post('/connections/gcal/start', clientId || clientSecret ? { clientId, clientSecret } : {});
+        openExternal(authUrl);
+        state.gcalStarting = true;
+        // Poll until the browser round-trip lands (focus also refreshes); stop after 3 minutes.
+        const until = Date.now() + 180000;
+        const poll = setInterval(async () => {
+          try { await load('connections'); } catch {}
+          if (state.gcalConnected || Date.now() > until) { clearInterval(poll); state.gcalStarting = false; if (state.gcalConnected) { toast('Google conectado'); syncNow(false); } render(); }
+        }, 2000);
+      }, [], 'Elige tu cuenta de Google en el navegador');
     }
     else if (a === 'gcal-off') act(() => Api.del('/connections/gcal'), ['connections', 'calendar', 'today'], 'Google Calendar desconectado');
     else if (a === 'sync') syncNow(true);
@@ -1229,6 +1452,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const box = e.target.closest('#personSend, #askDraft');
     if (!box) return;
     const ta = box.querySelector('textarea');
+    const edit = e.target.closest('[data-edit-text]');
+    if (edit) { editWithClaude(edit, byId(Number(box.dataset.cid || state.selectedContact)), ta); return; }
+    const undo = e.target.closest('[data-undo-edit]');
+    if (undo) { ta.value = ta.dataset.before ?? ta.value; undo.hidden = true; ta.focus(); return; }
     const link = e.target.closest('a[href][data-sent]');
     if (link) link.href = link.href.replace(/([?&](?:text|body)=)[^&]*/, (m, k) => k + encodeURIComponent(ta.value));
     handleSendClick(e, byId(Number(box.dataset.cid || state.selectedContact)), () => ta.value);
@@ -1244,6 +1471,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       act(() => Api.put(`/projects/${p.id}/people/${e.target.value}`, { role: 'Colaborador' }), ['projects'], 'Persona añadida al proyecto');
     }
   });
+  document.addEventListener('change', (e) => { if (e.target.id === 'waMode') { try { localStorage.setItem('stolk-wa', e.target.value); } catch {} render(); toast(e.target.value === 'web' ? 'WhatsApp se abrirá en el navegador' : 'WhatsApp se abrirá en la app'); } });
   document.addEventListener('change', (e) => { if (e.target.id === 'claudeModel') act(() => Api.patch('/settings', { claudeModel: e.target.value }), ['settings'], 'Modelo de Claude cambiado'); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tPanel') act(() => window.stolk.setPanel(e.target.checked), ['shell']); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tBlock') act(() => Api.patch('/settings', { blockEvents: e.target.checked }), ['settings'], e.target.checked ? 'Tus eventos bloquearán Cal.com' : 'Tus eventos ya no bloquean Cal.com'); });
@@ -1251,9 +1479,11 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (e.target.id !== 'askForm') return;
     e.preventDefault();
     const q = document.getElementById('askInput').value.trim();
-    if (q) claudeAsk(q);
+    if (state.askLoading) return;
+    if (q || state.askFiles.length) claudeAsk(q || 'Mira lo que te adjunto.');
   });
 
+  document.addEventListener('click', (e) => { const x = e.target.closest('[data-remove-file]'); if (x) { state.askFiles.splice(Number(x.dataset.removeFile), 1); renderComposerFiles(); } });
   window.stolk?.onCapture?.((r) => onCapture(r));
   // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.
   function showUpdate(version) {

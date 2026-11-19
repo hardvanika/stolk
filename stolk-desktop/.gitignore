@@ -1,3 +1,4 @@
 node_modules/
 dist/
 test/shots/
+build/google-client.json

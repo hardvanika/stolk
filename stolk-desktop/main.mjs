@@ -10,6 +10,8 @@ import os from 'node:os';
 import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
+import { installDesktopEntry } from './src/desktop-entry.mjs';
+import { portalScreenshot, displayRegion } from './src/portal-screenshot.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
 
@@ -18,6 +20,19 @@ const PANEL_WIDTH = 440;
 const wantsCapture = (argv) => argv.includes('--capture');
 
 if (!app.requestSingleInstanceLock()) app.quit();
+// Spanish UI locale, so date pickers read dd/mm/aaaa whatever the system language is.
+app.commandLine.appendSwitch('lang', 'es-ES');
+
+// Give the AppImage a .desktop file + icon so GNOME's dock shows the Stölk icon instead of a gear.
+function integrateAppImage() {
+  if (process.platform !== 'linux' || !process.env.APPIMAGE) return;
+  try {
+    const dataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+    if (installDesktopEntry({ execPath: process.env.APPIMAGE, iconPng: path.join(here, 'build', 'icon.png'), dataHome })) {
+      spawn('update-desktop-database', [path.join(dataHome, 'applications')], { stdio: 'ignore' }).on('error', () => {});
+    }
+  } catch (err) { console.error('No se pudo integrar la AppImage:', err.message); }
+}
 
 let win = null;
 let tray = null;
@@ -28,13 +43,25 @@ const settingsStore = createStore(app.getPath('userData'), 'settings.json', { sh
 let settings = settingsStore.read();
 const saveSettings = (patch) => { settings = { ...settings, ...patch }; settingsStore.write(settings); };
 // The Claude key lives only in ~/.stolk/.env, written by the server's /connections route. The shell reads it for captures.
-function apiKey() {
+function envFileValue(name) {
   try {
-    const env = fs.readFileSync(path.join(os.homedir(), '.stolk', '.env'), 'utf8');
-    const m = env.match(/^ANTHROPIC_API_KEY=(.*)$/m);
+    const env = fs.readFileSync(path.join(process.env.STOLK_HOME || path.join(os.homedir(), '.stolk'), '.env'), 'utf8');
+    const m = env.match(new RegExp(`^${name}=(.*)$`, 'm'));
     if (m) return m[1].trim().replace(/^["']|["']$/g, '');
   } catch {}
-  return process.env.ANTHROPIC_API_KEY || '';
+  return '';
+}
+function apiKey() { return envFileValue('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || ''; }
+
+// Stölk's own Google OAuth client ("Desktop app" type), written into build/google-client.json by the release
+// workflow from repository secrets. Google treats a desktop client's secret as public; it only identifies the app,
+// and the user still signs in and consents in their browser. A client the user saved in ~/.stolk/.env wins.
+function bundledGoogleClient() {
+  if (envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID) return null;
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(here, 'build', 'google-client.json'), 'utf8'));
+    return c.clientId && c.clientSecret ? c : null;
+  } catch { return null; }
 }
 
 // ---------- Local server ----------
@@ -44,8 +71,12 @@ const api = { baseUrl: '', token: crypto.randomBytes(32).toString('hex') };
 function startServer() {
   const entry = process.env.STOLK_SERVER || (app.isPackaged ? path.join(process.resourcesPath, 'server', 'main.js') : path.join(here, '..', 'server', 'dist', 'main.js'));
   if (!fs.existsSync(entry)) { console.warn(`Servidor no encontrado en ${entry}; la app arranca sin datos.`); return; }
+  const google = bundledGoogleClient();
   server = spawn(process.execPath, [entry], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', STOLK_TOKEN: api.token, STOLK_EXIT_ON_STDIN_CLOSE: '1' },
+    env: {
+      ...process.env, ELECTRON_RUN_AS_NODE: '1', STOLK_TOKEN: api.token, STOLK_EXIT_ON_STDIN_CLOSE: '1',
+      ...(google ? { GOOGLE_CLIENT_ID: google.clientId, GOOGLE_CLIENT_SECRET: google.clientSecret } : {}),
+    },
     stdio: ['pipe', 'pipe', 'inherit'], // the server exits when this process (and so its stdin) goes away
   });
   let out = '';
@@ -152,6 +183,27 @@ function registerShortcut() {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// On Wayland, the screenshot portal (non-interactive) avoids GNOME's "Share screen" dialog on every capture.
+// desktopCapturer stays as the fallback (X11, or a desktop without the portal).
+async function grabScreen(display) {
+  if (isWayland()) {
+    try {
+      const img = nativeImage.createFromBuffer(await portalScreenshot());
+      if (!img.isEmpty()) {
+        const { width, height } = img.getSize();
+        const all = screen.getAllDisplays();
+        return all.length > 1 ? img.crop(displayRegion(all, display, width, height)) : img;
+      }
+    } catch (err) { console.error(err.message); }
+  }
+  const sources = await desktopCapturer.getSources({
+    types: ['screen'],
+    thumbnailSize: { width: Math.round(display.size.width * display.scaleFactor), height: Math.round(display.size.height * display.scaleFactor) },
+  });
+  const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
+  if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla. En Wayland, acepta el permiso de captura de GNOME.');
+  return src.thumbnail;
+}
 async function startCapture() {
   if (capturing || !win) return;
   capturing = true;
@@ -159,17 +211,12 @@ async function startCapture() {
   try {
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     if (wasVisible) { win.hide(); await wait(250); } // keep Stölk itself out of the shot
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: Math.round(display.size.width * display.scaleFactor), height: Math.round(display.size.height * display.scaleFactor) },
-    });
-    const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
-    if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla. En Wayland, acepta el permiso de captura de GNOME.');
-    const rect = await pickArea(display, src.thumbnail);
+    const shot = await grabScreen(display);
+    const rect = await pickArea(display, shot);
     showWindow();
     if (!rect) return;
-    const size = src.thumbnail.getSize();
-    let crop = src.thumbnail.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
+    const size = shot.getSize();
+    let crop = shot.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
     if (crop.getSize().width > 1600) crop = crop.resize({ width: 1600 });
     const image = crop.toDataURL();
     win.webContents.send('capture:result', { status: 'reading', image });
@@ -212,7 +259,7 @@ ipcMain.handle('api:call', async (_e, method, route, body) => {
   if (!/^\/[\w\-/?=&%.:,+@]*$/.test(route) || !['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { status: 400, body: { error: { code: 'bad_call', message: 'Llamada no válida' } } };
   return serverCall(method, route, body);
 });
-ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
+ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), googleReady: !!(bundledGoogleClient() || envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
 ipcMain.handle('settings:set', async (_e, patch) => {
   const accel = typeof patch.shortcut === 'string' ? patch.shortcut.trim() : '';
   if (accel) {
@@ -254,6 +301,7 @@ ipcMain.handle('update:install', () => { if (updateReady) { app.isQuitting = tru
 // ---------- Lifecycle ----------
 app.on('second-instance', (_e, argv) => { if (wantsCapture(argv)) startCapture(); else showWindow(); });
 app.whenReady().then(() => {
+  integrateAppImage();
   startServer();
   createWindow();
   buildTray();

@@ -102,6 +102,23 @@ try {
   check(await chat.count() > 0, 'la ficha tiene botones de chat');
   if (await chat.count()) { await chat.click(); await page.waitForTimeout(500); }
   check(failed.length === before && (await page.evaluate(() => window.STOLK_CALLS)).some((c) => /\/opened$/.test(c)), 'abrir un chat se anota con /contacts/:id/opened');
+  // Persona: Editar changes only what you touch; Eliminar asks first, then deletes.
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForTimeout(300);
+  await page.click('button[data-action=edit-contact]');
+  await page.waitForSelector('#cPhone');
+  await page.fill('#cPhone', '+34 611 222 333');
+  await page.click('#modalForm button[type=submit]');
+  await page.waitForTimeout(600);
+  const edited = await (await fetch(`http://127.0.0.1:${port}/contacts?q=Nora`, { headers: h })).json();
+  check(edited[0]?.phone === '+34 611 222 333', 'Editar guarda el cambio en el servidor');
+  const before2 = (await (await fetch(`http://127.0.0.1:${port}/contacts`, { headers: h })).json()).length;
+  await page.click('button[data-action=delete-contact]');
+  await page.waitForSelector('#modalForm .btn.danger');
+  await page.click('#modalForm button[type=submit]');
+  await page.waitForTimeout(600);
+  const after2 = (await (await fetch(`http://127.0.0.1:${port}/contacts`, { headers: h })).json()).length;
+  check(after2 === before2 - 1, 'Eliminar borra a la persona tras confirmar');
   await page.evaluate(() => { location.hash = 'preguntar'; });
   await page.waitForSelector('#askInput');
   await page.fill('#askInput', '¿Con quién hablé ayer?');

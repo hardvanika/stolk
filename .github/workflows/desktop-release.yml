@@ -23,6 +23,17 @@ jobs:
       - name: Install and test the desktop app
         working-directory: stolk-desktop
         run: npm ci && npm test
+      - name: Bundle Stölk's Google sign-in client (only if the repo secrets exist)
+        working-directory: stolk-desktop
+        env:
+          CLIENT_ID: ${{ secrets.STOLK_GOOGLE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STOLK_GOOGLE_CLIENT_SECRET }}
+        run: |
+          if [ -n "$CLIENT_ID" ] && [ -n "$CLIENT_SECRET" ]; then
+            node -e 'require("fs").writeFileSync("build/google-client.json", JSON.stringify({clientId: process.env.CLIENT_ID, clientSecret: process.env.CLIENT_SECRET}))'
+          else
+            echo "No Google client secrets set: Ajustes asks for your own client."
+          fi
       - name: Build AppImage and .deb and publish them
         working-directory: stolk-desktop
         env:

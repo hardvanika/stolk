@@ -38,6 +38,7 @@ window.STOLK_SAMPLE = {
       { id: 203, cid: 2, date: '2026-12-01', start: '09:30', end: '09:45', type: 'Llamada' },
       { id: 204, cid: 9, date: '2026-11-19', start: '18:45', end: '19:00', type: 'Llamada' },
       { id: 205, cid: 8, date: '2026-11-19', start: '20:00', end: '20:30', type: 'Café' },
+      { id: 206, cid: null, date: '2026-11-21', start: '11:00', end: '11:30', type: 'Café', attendeeName: 'Lucía Ferrer', attendeeEmail: 'lucia@example.com' },
     ],
     gcal: [
       { id: 'g1', date: '2026-11-19', start: '16:00', end: '17:00', title: 'Tutoría TFG', place: 'UC3M, despacho 2.1.10' },

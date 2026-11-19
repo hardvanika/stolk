@@ -37,10 +37,53 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
     await page.waitForTimeout(200);
     check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: ${v} sin scroll horizontal`);
     await page.screenshot({ path: `${out}/${label}-${v}.png` });
+    if (v === 'calendario') check((await page.textContent('main')).includes('Lucía'), `${label}: Calendario se pinta con una reserva de alguien que no es contacto`);
   }
   await page.evaluate(() => { location.hash = 'hoy'; });
   await page.waitForTimeout(150);
   check((await page.locator('.today-row').count()) === 3, `${label}: Hoy enseña las 3 reuniones de hoy`);
+  // Editar con Claude in a person's Conversaciones card: rewrites in place, undo restores.
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForTimeout(150);
+  await page.locator('[data-action="select-contact"]').first().click();
+  await page.waitForSelector('#personText');
+  check(!(await page.textContent('#personSend')).includes('Sin Claude'), `${label}: Conversaciones ya no dice «Sin Claude»`);
+  await page.fill('#personText', 'Holi, que t');
+  await page.click('[data-edit-text]');
+  await page.waitForFunction(() => document.getElementById('personText').value.startsWith('Holi, ¿qué tal?'));
+  check(!(await page.evaluate(() => window.STOLK_CALLS)).some((c) => /opened/.test(c)), `${label}: Editar con Claude no envía ni anota nada`);
+  await page.screenshot({ path: `${out}/${label}-editar-mensaje.png` });
+  await page.click('[data-undo-edit]');
+  check((await page.inputValue('#personText')) === 'Holi, que t', `${label}: Deshacer recupera tu texto`);
+  // People picker in Nuevo proyecto: search, add chips, remove one, submit.
+  await page.evaluate(() => { location.hash = 'proyectos'; });
+  await page.waitForTimeout(150);
+  await page.click('[data-action="new-project"]');
+  await page.fill('#pTitle', 'Hackathon');
+  await page.fill('#pPeople', 'ribera');
+  check((await page.locator('#pPeopleList li[data-cid]').count()) === 1, `${label}: el buscador filtra por empresa`);
+  await page.keyboard.press('Enter');
+  await page.fill('#pPeople', 'lucia');
+  await page.click('#pPeopleList li[data-cid="1"]');
+  await page.fill('#pPeople', 'marta');
+  await page.keyboard.press('Enter');
+  await page.click('#pPeopleChips [data-remove="3"]');
+  check((await page.locator('#pPeopleChips .pick-chip').count()) === 2, `${label}: se añaden y quitan personas como chips`);
+  await page.screenshot({ path: `${out}/${label}-buscador.png` });
+  await page.click('#modalForm button[type=submit]');
+  await page.waitForTimeout(250);
+  const proj = await page.evaluate(() => window.STOLK_DATA.projects[0]);
+  check(proj.title === 'Hackathon' && proj.people.map((x) => x.cid).join() === '2,1', `${label}: el proyecto se crea con las personas elegidas`);
+  // Same picker for Invitados in Nuevo evento.
+  await page.evaluate(() => { location.hash = 'eventos'; });
+  await page.waitForTimeout(150);
+  await page.click('[data-action="new-event"]');
+  await page.fill('#eGuests', 'jorge');
+  await page.keyboard.press('Enter');
+  check((await page.locator('#eGuestsChips input[name=guests][value="2"]').count()) === 1, `${label}: Invitados usa el mismo buscador`);
+  await page.keyboard.press('Escape');
+  check((await page.locator('#modalForm').count()) === 1, `${label}: Escape en el buscador cierra la lista, no el modal`);
+  await page.click('[data-action="close-modal"].btn');
   // Capture flow: reading -> card -> save as new contact.
   await page.evaluate(() => window.STOLK_FAKE_CAPTURE({ status: 'reading', image: '' }));
   await page.waitForSelector('text=Leyendo tu captura');
@@ -66,6 +109,11 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.selectOption('#claudeModel', 'claude-haiku-5-5');
   await page.waitForTimeout(200);
   check((await page.evaluate(() => window.STOLK_CALLS)).includes('PATCH /settings'), `${label}: el modelo de Claude se cambia en Ajustes`);
+  await page.click('button[data-action=gcal-on]');
+  await page.waitForTimeout(2600);
+  const gcalls = await page.evaluate(() => window.STOLK_CALLS);
+  check(gcalls.includes('POST /connections/gcal/start') && gcalls.includes('open https://auth.example/consent'), `${label}: Continuar con Google abre el navegador`);
+  check(!(await page.locator('button[data-action=gcal-on]').count()), `${label}: Google aparece conectado al volver`);
   await page.click('button[data-action=sync]');
   await page.waitForTimeout(250);
   check((await page.evaluate(() => window.STOLK_CALLS)).filter((c) => c === 'POST /sync').length >= 2, `${label}: el botón Sincronizar llama al servidor`);
@@ -79,8 +127,14 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.evaluate(() => document.querySelector('#personSend a[data-sent]')?.addEventListener('click', (e) => e.preventDefault(), { once: true }));
   const chat = page.locator('#personSend a[data-sent]').first();
   if (await chat.count()) {
+    check((await chat.getAttribute('href')).startsWith('https://web.whatsapp.com/send?phone='), `${label}: en Linux WhatsApp abre WhatsApp Web directo`);
     await chat.click();
     await page.waitForTimeout(250);
+    await page.evaluate(() => document.querySelector('#personSend a[data-sent="Telegram"]')?.addEventListener('click', (e) => e.preventDefault(), { once: true }));
+    await page.click('#personSend a[data-sent="Telegram"]');
+    await page.waitForTimeout(250);
+    const compact = page.locator('.timeline li.opened');
+    check((await compact.count()) === 1 && (await compact.textContent()).includes('WhatsApp, Telegram'), `${label}: abrir chats sale como una sola línea corta en el Historial`);
     check((await page.evaluate(() => window.STOLK_CALLS)).some((c) => /^POST \/contacts\/\d+\/opened$/.test(c)), `${label}: abrir un chat queda en el historial`);
   } else check(false, `${label}: hay botones de chat en la ficha`);
   await page.evaluate(() => window.STOLK_FAKE_UPDATE('0.1.2'));
