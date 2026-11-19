@@ -43,7 +43,8 @@
       ],
       "category": "Office",
       "icon": "build/icon.png",
-      "synopsis": "Recuerda a todas las personas que conoces"
+      "synopsis": "Recuerda a todas las personas que conoces",
+      "syncDesktopName": true
     },
     "deb": {
       "maintainer": "hardvanika <noreply@users.noreply.github.com>"
@@ -62,5 +63,6 @@
     ],
     "artifactName": "stolk-${version}-${arch}.${ext}"
   },
-  "homepage": "https://github.com/hardvanika/stolk"
+  "homepage": "https://github.com/hardvanika/stolk",
+  "desktopName": "stolk.desktop"
 }

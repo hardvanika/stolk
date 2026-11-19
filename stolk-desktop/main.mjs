@@ -10,6 +10,7 @@ import os from 'node:os';
 import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
+import { installDesktopEntry } from './src/desktop-entry.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
 
@@ -20,6 +21,17 @@ const wantsCapture = (argv) => argv.includes('--capture');
 if (!app.requestSingleInstanceLock()) app.quit();
 // Spanish UI locale, so date pickers read dd/mm/aaaa whatever the system language is.
 app.commandLine.appendSwitch('lang', 'es-ES');
+
+// Give the AppImage a .desktop file + icon so GNOME's dock shows the Stölk icon instead of a gear.
+function integrateAppImage() {
+  if (process.platform !== 'linux' || !process.env.APPIMAGE) return;
+  try {
+    const dataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+    if (installDesktopEntry({ execPath: process.env.APPIMAGE, iconPng: path.join(here, 'build', 'icon.png'), dataHome })) {
+      spawn('update-desktop-database', [path.join(dataHome, 'applications')], { stdio: 'ignore' }).on('error', () => {});
+    }
+  } catch (err) { console.error('No se pudo integrar la AppImage:', err.message); }
+}
 
 let win = null;
 let tray = null;
@@ -272,6 +284,7 @@ ipcMain.handle('update:install', () => { if (updateReady) { app.isQuitting = tru
 // ---------- Lifecycle ----------
 app.on('second-instance', (_e, argv) => { if (wantsCapture(argv)) startCapture(); else showWindow(); });
 app.whenReady().then(() => {
+  integrateAppImage();
   startServer();
   createWindow();
   buildTray();

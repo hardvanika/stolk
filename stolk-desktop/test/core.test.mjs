@@ -54,3 +54,16 @@ test('gsettings values are quoted GVariant strings', async () => {
   assert.equal(gvString("it's"), `'it\\'s'`);
   assert.equal(gvString('a\\b'), `'a\\\\b'`);
 });
+
+test('AppImage desktop entry points at the AppImage and matches the window class', async () => {
+  const { desktopEntry, installDesktopEntry } = await import('../src/desktop-entry.mjs');
+  const e = desktopEntry('/home/ivan/Aplicaciones/Stölk "nuevo".AppImage');
+  assert.match(e, /^Exec="\/home\/ivan\/Aplicaciones\/Stölk \\"nuevo\\"\.AppImage" %U$/m);
+  assert.match(e, /^StartupWMClass=stolk$/m);
+  assert.match(e, /^Icon=stolk$/m);
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'stolk-xdg-'));
+  const png = path.join(home, 'i.png'); fs.writeFileSync(png, Buffer.from([1, 2, 3]));
+  assert.equal(installDesktopEntry({ execPath: '/a.AppImage', iconPng: png, dataHome: home }), true);
+  assert.equal(installDesktopEntry({ execPath: '/a.AppImage', iconPng: png, dataHome: home }), false);
+  assert.ok(fs.existsSync(path.join(home, 'icons/hicolor/512x512/apps/stolk.png')));
+});
