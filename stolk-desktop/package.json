@@ -49,13 +49,16 @@
     "publish": {
       "provider": "github",
       "owner": "hardvanika",
-      "repo": "stolk"
+      "repo": "stolk",
+      "releaseType": "release"
     },
     "extraResources": [
       {
         "from": "../server/dist",
         "to": "server"
       }
-    ]
-  }
+    ],
+    "artifactName": "stolk-${version}-${arch}.${ext}"
+  },
+  "homepage": "https://github.com/hardvanika/stolk"
 }
