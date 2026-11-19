@@ -14,6 +14,13 @@ export interface Ctx {
   params: Record<string, string>;
   query: Query;
   body: any;
+  /** "127.0.0.1:PORT" as the client addressed us; used to build OAuth redirect URIs. */
+  host: string;
+}
+
+/** Return this from a handler to answer with a small HTML page instead of JSON. */
+export class Html {
+  constructor(public html: string, public status = 200) {}
 }
 export type Handler = (ctx: Ctx) => unknown | Promise<unknown>;
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -124,7 +131,14 @@ export function createApiServer(router: Router, token: string): Server {
         throw new HttpError(401, 'unauthorized', 'Missing or wrong bearer token');
       }
       const body = ['POST', 'PUT', 'PATCH'].includes(req.method!) ? await readBody(req) : undefined;
-      const out = await m.route.handler({ params: m.params, query: url.searchParams, body: body ?? {} });
+      const out = await m.route.handler({ params: m.params, query: url.searchParams, body: body ?? {}, host });
+      if (out instanceof Html) {
+        res.writeHead(out.status, {
+          'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store',
+          'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+        });
+        return void res.end(out.html);
+      }
       send(res, req.method === 'POST' && out !== undefined ? 201 : out === undefined ? 204 : 200, out, cors);
     } catch (e) {
       if (e instanceof HttpError) return send(res, e.status, { error: { code: e.code, message: e.message } }, cors);

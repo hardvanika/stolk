@@ -131,6 +131,14 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE contacts ADD COLUMN web TEXT NOT NULL DEFAULT '';
   `,
+  `
+  -- Interactions created by a sync remember where they came from, so a re-sync never duplicates them.
+  ALTER TABLE interactions ADD COLUMN source TEXT;
+  ALTER TABLE interactions ADD COLUMN external_id TEXT;
+  CREATE UNIQUE INDEX interactions_external ON interactions(source, external_id) WHERE external_id IS NOT NULL;
+  ALTER TABLE events ADD COLUMN cal_block_error TEXT;
+  ALTER TABLE gcal ADD COLUMN updated_at TEXT;
+  `,
 ];
 
 export function openDb(path: string): DB {

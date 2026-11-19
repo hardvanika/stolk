@@ -35,6 +35,8 @@ const CONNECTIONS: Record<string, { keys: SecretKey[]; put?: SecretKey }> = {
   claude: { keys: ['ANTHROPIC_API_KEY'], put: 'ANTHROPIC_API_KEY' },
   calcom: { keys: ['CALCOM_API_KEY'], put: 'CALCOM_API_KEY' },
   gcal: { keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'] },
+  // Same Google sign-in as gcal; shown separately so its own sync state is visible.
+  gmail: { keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'] },
 };
 
 export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
@@ -73,7 +75,7 @@ export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
   r.put('/connections/:name', ({ params, body }) => {
     const c = CONNECTIONS[params.name];
     if (!c) throw new HttpError(404, 'not_found', 'Unknown connection');
-    if (!c.put) throw bad('Connect Google Calendar with POST /connections/gcal/start');
+    if (!c.put) throw bad('Connect Google with POST /connections/gcal/start');
     const v = validate(body, { apiKey: { kind: 'string', required: true } });
     env.set({ [c.put]: v.apiKey.trim() });
     return { connected: true };
@@ -83,8 +85,9 @@ export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
     const c = CONNECTIONS[params.name];
     if (!c) throw new HttpError(404, 'not_found', 'Unknown connection');
     // Keep the Google OAuth client so reconnecting only needs a new consent.
-    const drop = params.name === 'gcal' ? (['GOOGLE_REFRESH_TOKEN'] as SecretKey[]) : c.keys;
+    const google = params.name === 'gcal' || params.name === 'gmail';
+    const drop = google ? (['GOOGLE_REFRESH_TOKEN'] as SecretKey[]) : c.keys;
     env.set(Object.fromEntries(drop.map((k) => [k, null])));
-    db.prepare('DELETE FROM sync_state WHERE name = ?').run(params.name);
+    db.prepare('DELETE FROM sync_state WHERE name IN (?, ?)').run(google ? 'gcal' : params.name, google ? 'gmail' : params.name);
   });
 }

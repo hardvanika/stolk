@@ -3,6 +3,15 @@ import { Router, notFound, bad } from '../http.js';
 import { intParam, optDate, similarity, validate, type Spec } from '../util.js';
 import { getContact } from './contacts.js';
 
+/** Keeps the Cal.com block in step with an event. No-ops when Cal.com isn't connected. */
+export interface EventHooks {
+  onEventChanged(id: number): Promise<void>;
+  onEventDeleted(blockUid: string | null): Promise<void>;
+}
+const noHooks: EventHooks = { onEventChanged: async () => {}, onEventDeleted: async () => {} };
+// Changing any of these moves or removes the slot, so the block must be redone.
+const BLOCK_FIELDS = ['date', 'start', 'end', 'status'];
+
 const GUEST_ST = ['invitado', 'confirmado', 'asistió', 'no vino'] as const;
 const SPEC: Spec = {
   title: { kind: 'string', required: true },
@@ -21,7 +30,9 @@ export function mapEvent(db: DB, r: any) {
   return {
     id: r.id, title: r.title, date: r.date, start: r.start, end: r.end, place: r.place,
     url: r.url || undefined, status: r.status, desc: r.desc, guests,
-    calBlock: r.cal_block_uid ? { uid: r.cal_block_uid, synced: !!r.cal_block_synced } : null,
+    calBlock: r.cal_block_uid || r.cal_block_error
+      ? { uid: r.cal_block_uid ?? null, synced: !!r.cal_block_synced, error: r.cal_block_error ?? undefined }
+      : null,
   };
 }
 
@@ -98,7 +109,7 @@ export function likelyGuests(db: DB, eventId: number) {
     .slice(0, 20);
 }
 
-export function eventRoutes(r: Router, db: DB) {
+export function eventRoutes(r: Router, db: DB, hooks: EventHooks = noHooks) {
   r.get('/events', ({ query }) => {
     const from = optDate(query, 'from'), to = optDate(query, 'to');
     const where: string[] = [];
@@ -113,34 +124,43 @@ export function eventRoutes(r: Router, db: DB) {
 
   r.get('/events/:id/likely-guests', ({ params }) => likelyGuests(db, intParam(params.id)));
 
-  r.post('/events', ({ body }) => {
+  r.post('/events', async ({ body }) => {
     const { guests: rawGuests, ...rest } = body ?? {};
     const guests = rawGuests !== undefined ? parseGuests(rawGuests) : [];
     const v = validate(rest, SPEC);
-    return tx(db, () => {
+    const id = tx(db, () => {
       const keys = FIELDS.filter((k) => k in v);
       const res = db.prepare(`INSERT INTO events (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`).run(...keys.map((k) => v[k]));
       const id = Number(res.lastInsertRowid);
       const ins = db.prepare('INSERT INTO event_guests (event_id, cid, st) VALUES (?, ?, ?)');
       for (const g of guests) ins.run(id, g.cid, g.st);
-      return mapEvent(db, getEvent(db, id));
+      return id;
     });
+    await hooks.onEventChanged(id);
+    return mapEvent(db, getEvent(db, id));
   });
 
-  r.patch('/events/:id', ({ params, body }) => {
+  r.patch('/events/:id', async ({ params, body }) => {
     const id = intParam(params.id);
     getEvent(db, id);
     if (body && 'guests' in body) throw bad('Change guests with PUT/DELETE /events/:id/guests/:cid');
     const v = validate(body, SPEC, true);
     const keys = FIELDS.filter((k) => k in v);
-    if (keys.length) db.prepare(`UPDATE events SET ${keys.map((k) => `${k} = ?`).join(', ')}, cal_block_synced = 0 WHERE id = ?`).run(...keys.map((k) => v[k]), id);
+    const cur = getEvent(db, id);
+    const moved = BLOCK_FIELDS.some((k) => k in v && v[k] !== cur[k]);
+    if (keys.length) {
+      db.prepare(`UPDATE events SET ${keys.map((k) => `${k} = ?`).join(', ')}${moved ? ', cal_block_synced = 0' : ''} WHERE id = ?`)
+        .run(...keys.map((k) => v[k]), id);
+    }
+    if (moved) await hooks.onEventChanged(id);
     return mapEvent(db, getEvent(db, id));
   });
 
-  r.delete('/events/:id', ({ params }) => {
+  r.delete('/events/:id', async ({ params }) => {
     const id = intParam(params.id);
-    getEvent(db, id);
+    const ev = getEvent(db, id);
     db.prepare('DELETE FROM events WHERE id = ?').run(id);
+    await hooks.onEventDeleted(ev.cal_block_uid ?? null);
   });
 
   r.put('/events/:id/guests/:cid', ({ params, body }) => {

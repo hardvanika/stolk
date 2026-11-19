@@ -236,7 +236,6 @@ test('settings and connections: keys go to .env with mode 600 and are never retu
 
 test('not-yet-built routes answer 501, unknown routes 404', async () => {
   assert.equal((await api('POST', '/ask', { question: 'hola' })).status, 501);
-  assert.equal((await api('POST', '/sync')).status, 501);
   assert.equal((await api('GET', '/nope')).status, 404);
   assert.equal((await api('PUT', '/contacts')).status, 405);
 });
