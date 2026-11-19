@@ -2,7 +2,7 @@
 
 The local API behind the Stölk desktop app. It keeps your data in one SQLite file on your own computer and serves it over HTTP on `127.0.0.1` only, behind a bearer token.
 
-- No runtime dependencies: `node:http`, `node:sqlite`, `node:crypto`. Needs Node ≥ 22.13 (or Electron ≥ 36).
+- Built on `node:http` and `node:sqlite`, plus the Anthropic SDK for Preguntar. The build bundles everything into `dist/`, so it runs without `node_modules`. Needs Node ≥ 22.13 (or Electron ≥ 36).
 - Data: `~/.stolk/stolk.db`. Keys: `~/.stolk/.env` (mode 600, never in the repo).
 - Full interface: see `/mnt/project-files/plan/stolk-api-interface.md` in the project (copied in `docs/api.md` when it settles).
 
@@ -46,7 +46,7 @@ The renderer may call it directly from `file://` (it sends `Origin: null`, which
 
 ## Package
 
-`npm run build` writes `dist/`, which is self-contained (it has its own `package.json` with `"type":"module"`). Copy that folder into the app, for example with electron-builder `extraResources`.
+`npm run build` type-checks and then bundles with esbuild into `dist/` (about 6 MB). That folder runs on its own: it has its own `package.json` with `"type":"module"` and needs no `node_modules`. Copy that folder into the app, for example with electron-builder `extraResources`.
 
 ## Test
 
@@ -66,7 +66,7 @@ npm test         # builds and runs test/*.test.ts against a temp DB
 | Cal.com sync and blocking your Stölk events | Done |
 | Google Calendar and Gmail (headers only) sync | Done |
 | Logging chat-button clicks (WhatsApp, Telegram, Gmail, LinkedIn) | Done |
-| Preguntar with Claude | Next (`POST /ask` returns 501) |
+| Preguntar with Claude (answers, sources, message drafts) | Done |
 
 ## Connecting your accounts
 
@@ -88,3 +88,12 @@ While the Google project is in "Testing", Google expires the sign-in after 7 day
 - Google Calendar: events on your primary calendar in the same window. Slots that duplicate a Cal.com booking are skipped.
 - Gmail: each email to or from a known contact becomes one history entry ("Te escribió: subject" or "Le escribiste: subject").
 - WhatsApp and Telegram: there is no allowed way to read personal chats, so Stölk logs when you open a chat from a person's card (`POST /contacts/:id/opened`).
+
+## Preguntar
+
+`POST /ask {question}` sends the question to Claude together with a compact JSON copy of your data: contacts (no phone numbers), the last year of history, relations, events, projects, bookings, and the next 90 days of Google Calendar. It returns `{answer, cites, draft, used, model}`. When you ask it to write to someone, `draft` is `{cid, text}`, and the app shows it next to the send buttons. Nothing is ever sent automatically.
+
+- Model: `claude-opus-5-5` by default, changeable in Ajustes (`claudeModel`: Opus 5.5, Sonnet 5.5 or Haiku 5.5).
+- It uses structured output, so the reply is always valid JSON. Server-side fallbacks are on, so if the model declines a question, another model answers instead.
+- The data block is prompt-cached, so follow-up questions within a few minutes are cheaper.
+- Turn it off with `claudeOn: false` in Ajustes.

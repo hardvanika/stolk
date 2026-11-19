@@ -11,6 +11,8 @@ import { settingsRoutes } from './routes/settings.js';
 import { syncRoutes } from './routes/sync.js';
 import { Syncer } from './sync/index.js';
 import type { Fetch } from './sync/fetch.js';
+import { ask, type CreateMessage } from './ask.js';
+import { getSettings } from './routes/settings.js';
 
 export const VERSION = '0.1.0';
 
@@ -21,9 +23,11 @@ export interface AppDeps {
   now?: () => Date;
   /** Injectable fetch for Cal.com and Google, so tests never touch the network. */
   fetch?: Fetch;
+  /** Injectable Claude call for /ask tests. */
+  createMessage?: CreateMessage;
 }
 
-export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch }: AppDeps): Router {
+export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage }: AppDeps): Router {
   const r = new Router();
   const syncer = new Syncer(db, env, f, now);
   r.get('/health', () => ({ ok: true, version: VERSION }), { public: true });
@@ -36,7 +40,14 @@ export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch 
   settingsRoutes(r, db, env);
   syncRoutes(r, db, env, syncer, f, now);
 
-  // Step 3. The route exists so the desktop can wire it now.
-  r.post('/ask', () => { throw new HttpError(501, 'not_implemented', 'Preguntar is not built yet'); });
+  // Preguntar: one Claude call with Ivan's data. Runs only when he presses Send in the app.
+  r.post('/ask', async ({ body }) => {
+    const q = typeof body?.question === 'string' ? body.question.trim() : '';
+    if (!q) throw new HttpError(400, 'bad_request', 'Escribe una pregunta');
+    if (q.length > 4000) throw new HttpError(400, 'bad_request', 'La pregunta es demasiado larga');
+    const s = getSettings(db);
+    if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
+    return ask(db, env, q, { now: now(), model: s.claudeModel, create: createMessage });
+  });
   return r;
 }

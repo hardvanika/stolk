@@ -8,6 +8,7 @@ const DEFAULTS = {
   claudeOn: true,
   theme: 'claro',
   captureShortcut: 'Ctrl+Shift+S',
+  claudeModel: 'claude-opus-5-5',
   calTypes: [
     { id: 'cafe', name: 'Café', min: 30, slug: 'cafe-30' },
     { id: 'llamada', name: 'Llamada', min: 15, slug: 'llamada-15' },
@@ -20,6 +21,7 @@ const SPEC: Spec = {
   theme: { kind: { enum: ['claro', 'oscuro', 'sistema'] } },
   // Electron accelerator syntax, e.g. "Ctrl+Shift+S". The desktop registers it.
   captureShortcut: { kind: 'string' },
+  claudeModel: { kind: { enum: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'] } },
   calTypes: { kind: 'string' }, // validated by hand below
 };
 

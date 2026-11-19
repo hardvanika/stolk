@@ -234,8 +234,9 @@ test('settings and connections: keys go to .env with mode 600 and are never retu
   assert.equal((await api('PUT', '/connections/nope', { apiKey: 'x' })).status, 404);
 });
 
-test('not-yet-built routes answer 501, unknown routes 404', async () => {
-  assert.equal((await api('POST', '/ask', { question: 'hola' })).status, 501);
+test('ask without a key, unknown routes 404', async () => {
+  // No Claude key in this test's .env: /ask says how to fix it.
+  assert.equal((await api('POST', '/ask', { question: 'hola' })).body.error.code, 'claude_not_connected');
   assert.equal((await api('GET', '/nope')).status, 404);
   assert.equal((await api('PUT', '/contacts')).status, 405);
 });
