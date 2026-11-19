@@ -42,7 +42,7 @@ try {
     window.stolk = {
       apiReady: async () => true, onApiReady: () => {},
       call: async (method, route, body) => { window.STOLK_CALLS.push(method + ' ' + route); return window.__stolkHttp(method, route, body ?? null); },
-      settings: async () => ({ shortcut: 'Super+K', panel: false, hasKey: false, shortcutActive: false, wayland: true }),
+      settings: async () => ({ shortcut: 'Ctrl+Shift+S', panel: false, hasKey: false, shortcutActive: false, wayland: true }),
       setSettings: async () => ({ ok: true }), setPanel: async (on) => on, capture: async () => {},
       installGnomeShortcut: async () => ({}), openExternal: async () => {},
       onCapture: (fn) => { cb = fn; },
@@ -81,6 +81,13 @@ try {
   await page.waitForTimeout(800);
   check(true, 'Preguntar sin clave no rompe la app');
   check(failed.length === 0, 'ninguna llamada a la API falla' + (failed.length ? ': ' + failed.join(', ') : ''));
+  // main.mjs reads and writes the capture shortcut through /settings.
+  const h = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const st = await (await fetch(`http://127.0.0.1:${port}/settings`, { headers: h })).json();
+  check(st.captureShortcut === 'Ctrl+Shift+S', 'el atajo por defecto es Ctrl+Shift+S');
+  const okPatch = await fetch(`http://127.0.0.1:${port}/settings`, { method: 'PATCH', headers: h, body: JSON.stringify({ captureShortcut: 'Super+K' }) });
+  const badPatch = await fetch(`http://127.0.0.1:${port}/settings`, { method: 'PATCH', headers: h, body: JSON.stringify({ captureShortcut: 'Banana+' }) });
+  check(okPatch.status === 200 && badPatch.status === 400, 'el servidor guarda un atajo válido y rechaza uno roto');
   await page.screenshot({ path: path.join(home, 'live.png') });
 } finally {
   await browser.close();

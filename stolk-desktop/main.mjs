@@ -22,7 +22,7 @@ let tray = null;
 let server = null;
 let normalBounds = null;
 let capturing = false;
-const settingsStore = createStore(app.getPath('userData'), 'settings.json', { shortcut: 'Super+K', panel: false });
+const settingsStore = createStore(app.getPath('userData'), 'settings.json', { shortcut: 'Ctrl+Shift+S', panel: false });
 let settings = settingsStore.read();
 const saveSettings = (patch) => { settings = { ...settings, ...patch }; settingsStore.write(settings); };
 // The Claude key lives only in ~/.stolk/.env, written by the server's /connections route. The shell reads it for captures.
@@ -43,8 +43,8 @@ function startServer() {
   const entry = process.env.STOLK_SERVER || (app.isPackaged ? path.join(process.resourcesPath, 'server', 'main.js') : path.join(here, '..', 'server', 'dist', 'main.js'));
   if (!fs.existsSync(entry)) { console.warn(`Servidor no encontrado en ${entry}; la app arranca sin datos.`); return; }
   server = spawn(process.execPath, [entry], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', STOLK_TOKEN: api.token },
-    stdio: ['ignore', 'pipe', 'inherit'],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', STOLK_TOKEN: api.token, STOLK_EXIT_ON_STDIN_CLOSE: '1' },
+    stdio: ['pipe', 'pipe', 'inherit'], // the server exits when this process (and so its stdin) goes away
   });
   let out = '';
   server.stdout.on('data', (buf) => {
@@ -52,7 +52,7 @@ function startServer() {
     for (const line of out.split('\n').slice(0, -1)) {
       try {
         const msg = JSON.parse(line);
-        if (msg.ready && !api.baseUrl) { api.baseUrl = `http://127.0.0.1:${msg.port}`; win?.webContents.send('api:ready'); }
+        if (msg.ready && !api.baseUrl) { api.baseUrl = `http://127.0.0.1:${msg.port}`; win?.webContents.send('api:ready'); loadServerShortcut(); }
       } catch { /* other server output */ }
     }
     out = out.slice(out.lastIndexOf('\n') + 1);
@@ -107,6 +107,32 @@ function buildTray() {
     { label: 'Salir', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
 }
+
+// The capture shortcut lives in the server's /settings (captureShortcut); settings.json keeps a copy so the
+// shortcut works before the server is up.
+async function serverCall(method, route, body) {
+  const res = await fetch(api.baseUrl + route, {
+    method,
+    headers: { Authorization: `Bearer ${api.token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, body: text ? JSON.parse(text) : null };
+}
+async function applyShortcut(accel) {
+  if (accel === settings.shortcut && globalShortcut.isRegistered(accel)) return;
+  saveSettings({ shortcut: accel });
+  registerShortcut();
+  buildTray();
+  if (settings.gnome) await installGnomeShortcut({ accel, command: gnomeCommand() }).catch(() => {});
+}
+async function loadServerShortcut() {
+  try {
+    const r = await serverCall('GET', '/settings');
+    if (r.status === 200 && r.body?.captureShortcut) await applyShortcut(r.body.captureShortcut);
+  } catch { /* keep the local copy */ }
+}
+const gnomeCommand = () => `"${process.env.APPIMAGE || process.execPath}" --capture`;
 
 // ---------- Capture ----------
 function registerShortcut() {
@@ -174,24 +200,25 @@ ipcMain.handle('api:ready', () => !!api.baseUrl);
 ipcMain.handle('api:call', async (_e, method, route, body) => {
   if (!api.baseUrl) return { status: 503, body: { error: { code: 'not_ready', message: 'El servidor local aún no está listo' } } };
   if (!/^\/[\w\-/?=&%.:,+@]*$/.test(route) || !['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { status: 400, body: { error: { code: 'bad_call', message: 'Llamada no válida' } } };
-  const res = await fetch(api.baseUrl + route, {
-    method,
-    headers: { Authorization: `Bearer ${api.token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  return { status: res.status, body: text ? JSON.parse(text) : null };
+  return serverCall(method, route, body);
 });
 ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), shortcutActive: globalShortcut.isRegistered(settings.shortcut), wayland: process.env.XDG_SESSION_TYPE === 'wayland' }));
-ipcMain.handle('settings:set', (_e, patch) => {
-  if (typeof patch.shortcut === 'string' && patch.shortcut.trim()) { saveSettings({ shortcut: patch.shortcut.trim() }); registerShortcut(); buildTray(); }
+ipcMain.handle('settings:set', async (_e, patch) => {
+  const accel = typeof patch.shortcut === 'string' ? patch.shortcut.trim() : '';
+  if (accel) {
+    if (api.baseUrl) {
+      const r = await serverCall('PATCH', '/settings', { captureShortcut: accel });
+      if (r.status >= 400) return { ok: false, message: r.body?.error?.message || 'Atajo no válido', shortcutActive: globalShortcut.isRegistered(settings.shortcut) };
+    }
+    await applyShortcut(accel);
+  }
   return { ok: true, shortcutActive: globalShortcut.isRegistered(settings.shortcut) };
 });
 ipcMain.handle('window:panel', (_e, on) => { setPanel(!!on); return !!on; });
 ipcMain.handle('capture:start', () => startCapture());
 ipcMain.handle('shortcut:gnome', async () => {
-  const exe = process.env.APPIMAGE || process.execPath;
-  const binding = await installGnomeShortcut({ accel: settings.shortcut, command: `"${exe}" --capture` });
+  const binding = await installGnomeShortcut({ accel: settings.shortcut, command: gnomeCommand() });
+  saveSettings({ gnome: true }); // later shortcut changes update this GNOME binding too
   return { binding };
 });
 ipcMain.handle('open:external', (_e, url) => openSafe(url));

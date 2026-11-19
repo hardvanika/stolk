@@ -49,11 +49,11 @@
       for (const [m, re, fn] of routes) { const mm = method === m && route.match(re); if (mm) return fn(mm, body); }
       return { status: 404, body: { error: { code: 'not_found', message: `Sin ruta de prueba: ${method} ${route}` } } };
     },
-    settings: async () => ({ shortcut: 'Super+K', panel: false, hasKey: true, shortcutActive: false, wayland: true }),
+    settings: async () => ({ shortcut: 'Ctrl+Shift+S', panel: false, hasKey: true, shortcutActive: false, wayland: true }),
     setSettings: async () => ({ ok: true, shortcutActive: false }),
     setPanel: async (on) => on,
     capture: async () => {},
-    installGnomeShortcut: async () => ({ binding: '<Super>k' }),
+    installGnomeShortcut: async () => ({ binding: '<Control><Shift>s' }),
     openExternal: async () => {},
     onCapture: (fn) => { captureCb = fn; },
   };

@@ -22,7 +22,7 @@ Los datos se guardan en `~/.stolk/stolk.db`.
 
 ## Guardar una persona desde la pantalla
 
-1. Pulsa **Super+K** (se cambia en Ajustes).
+1. Pulsa **Ctrl+Shift+S** (se cambia en Ajustes). Mientras Stölk lo use, las demás apps no reciben ese atajo, así que si echas de menos «Guardar como» cámbialo por otro, por ejemplo Super+K.
 2. Recorta la zona donde está la persona (Esc cancela).
 3. Claude lee solo ese recorte y propone una ficha. Tú la revisas y decides si se guarda o se fusiona con un contacto existente.
 

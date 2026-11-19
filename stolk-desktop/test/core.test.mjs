@@ -31,6 +31,7 @@ test('parseContact sends the image and asks for the card schema', async () => {
 
 test('accelerators convert to GNOME bindings', () => {
   assert.equal(toGnomeBinding('Super+K'), '<Super>k');
+  assert.equal(toGnomeBinding('Ctrl+Shift+S'), '<Control><Shift>s');
   assert.equal(toGnomeBinding('Ctrl+Alt+S'), '<Control><Alt>s');
   assert.equal(toGnomeBinding('CommandOrControl+Shift+F2'), '<Control><Shift>F2');
 });
