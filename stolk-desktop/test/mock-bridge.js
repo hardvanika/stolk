@@ -35,12 +35,14 @@
     ['GET', /^\/calendar\?/, () => ok({ events: S.events, bookings: S.bookings, gcal: S.gcal, follows: [] })],
     ['POST', /^\/connections\/gcal\/start$/, () => { setTimeout(() => { S.connections.gcal = { connected: true }; S.connections.gmail = { connected: true }; }, 300); return ok({ authUrl: 'https://auth.example/consent', state: 's' }); }],
     ['POST', /^\/sync$/, () => ok({ lastSync: '2026-11-19T18:30:00', calcom: { ok: true, bookings: 2, blocks: 1 }, gcal: { ok: true, events: 3 }, gmail: { ok: false, skipped: 'not connected' } })],
-    ['POST', /^\/contacts\/(\d+)\/opened$/, (m, b) => { const i = { id: next++, cid: +m[1], date: today, ch: 'mensaje', text: `Chat abierto en ${b.channel}` }; S.interactions.push(i); return ok(i, 201); }],
+    ['POST', /^\/contacts\/(\d+)\/opened$/, (m, b) => { const i = { id: next++, cid: +m[1], date: today, ch: 'mensaje', text: { whatsapp: 'Abriste el chat de WhatsApp', telegram: 'Abriste el chat de Telegram', gmail: 'Abriste Gmail para escribirle', linkedin: 'Abriste su perfil de LinkedIn' }[b.channel] }; if (!S.interactions.some((x) => x.cid === i.cid && x.date === i.date && x.text === i.text)) S.interactions.push(i); return ok(i, 201); }],
     ['GET', /^\/settings$/, () => ok(S.settings)],
     ['PATCH', /^\/settings$/, (m, b) => ok(Object.assign(S.settings, b))],
     ['GET', /^\/connections$/, () => ok(S.connections)],
     ['PUT', /^\/connections\/(\w+)$/, (m) => { S.connections[m[1]] = { connected: true }; return ok({ ok: true }); }],
-    ['POST', /^\/ask$/, (m, b) => ok(/escribe/i.test(b.question)
+    ['POST', /^\/ask$/, (m, b) => ok(/^Mejora este mensaje para .* \(id (\d+)\)/.test(b.question)
+      ? { answer: 'Lo he dejado más natural.', cites: [], draft: { cid: Number(b.question.match(/\(id (\d+)\)/)[1]), text: 'Holi, ¿qué tal? ¿Nos tomamos un café esta semana?' } }
+      : /escribe/i.test(b.question)
       ? { answer: 'Te dejo un mensaje para Jorge.', cites: [{ type: 'contact', id: 2 }], draft: { cid: 2, text: 'Hola Jorge, te paso el deck actualizado de Voltia. Un abrazo, Ivan' } }
       : { answer: 'En Tech & Tapas #3 conociste a Lucía Romero y Jorge Sanz.', cites: [{ type: 'contact', id: 1 }, { type: 'contact', id: 2 }], draft: null })],
   ];

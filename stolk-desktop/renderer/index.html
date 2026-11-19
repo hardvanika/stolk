@@ -155,6 +155,8 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .timeline { list-style: none; margin: 0; padding: 0 0 0 4px; }
 .timeline li { position: relative; padding: 0 0 18px 24px; }
 .timeline li::before { content: ""; position: absolute; left: 4px; top: 16px; bottom: 0; width: 1px; background: var(--line-strong); }
+.timeline li.opened { padding-bottom: 12px; }
+.timeline li.opened .node { width: 7px; height: 7px; left: 1px; top: 6px; }
 .timeline li:last-child::before { display: none; }
 .timeline .node { position: absolute; left: 0; top: 5px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); background: var(--surface); }
 .timeline .node.cal, .timeline .node.event { border-color: var(--ink); background: var(--ink); }
@@ -604,9 +606,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       </section>
       <section class="panel panel-pad form" style="margin-top:16px" id="personSend">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>Conversaciones</h3>${chatButtons(c, true)}</div>
-        <p class="note" style="margin:0">Abre tu chat con ${esc(c.name.split(' ')[0])} en cada app. Sin Claude.</p>
         <div class="field"><label for="personText">Escribir mensaje</label><textarea id="personText" placeholder="Escribe aquí y elige por dónde enviarlo…"></textarea></div>
-        ${sendButtons(c, '', 'Hola')}
+        ${sendButtons(c, '', 'Hola', true)}
       </section>
       ${futureBk.length || evs.length ? `<section class="panel panel-pad" style="margin-top:16px">
         <h3 style="margin-bottom:10px">Próximo con ${esc(c.name.split(' ')[0])}</h3>
@@ -616,7 +617,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       ${connectionsHtml(c)}
       <section class="panel panel-pad" style="margin-top:16px">
         <h3 style="margin-bottom:14px">Historial</h3>
-        <ol class="timeline">${hist.map((i) => `
+        <ol class="timeline">${histRows(hist).map((i) => i.opened ? `
+          <li class="opened"><span class="node"></span><div class="when">${esc(fmt(i.date))} · ${esc(i.opened.join(', '))}</div></li>` : `
           <li><span class="node ${i.ch === 'cal' ? 'cal' : i.ch === 'evento' ? 'event' : ''}"></span>
             <div class="when">${esc(fmtLong(i.date))}</div>
             <div class="tags" style="margin-top:4px">${chLabel(i)}${i.eventId ? `<span class="tag event">${esc(state.events.find((e) => e.id === i.eventId)?.title)}</span>` : ''}</div>
@@ -626,6 +628,20 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       </section>`;
   }
 
+  // Chat buttons log "Abriste el chat de X" entries; show them as one small line per day instead of full entries.
+  const OPENED_RE = /^Abriste (?:el chat de (WhatsApp|Telegram)|(Gmail) para escribirle|su perfil de (LinkedIn))$/;
+  function histRows(hist) {
+    const out = [];
+    for (const i of hist) {
+      const m = !i.follow && !i.eventId && OPENED_RE.exec(i.text || '');
+      if (!m) { out.push(i); continue; }
+      const app = m[1] || m[2] || m[3];
+      const prev = out[out.length - 1];
+      if (prev?.opened && prev.date === i.date) { if (!prev.opened.includes(app)) prev.opened.push(app); }
+      else out.push({ date: i.date, opened: [app] });
+    }
+    return out;
+  }
   // ---------- Relaciones (solo con tus datos) ----------
   function metAt(cid) {
     const first = state.interactions.filter((i) => i.cid === cid).sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -953,6 +969,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="field"><label for="claudeModel">Modelo</label><select id="claudeModel" style="max-width:280px">${[['claude-opus-5-5', 'Opus 5.5 (mejor respuesta)'], ['claude-sonnet-5-5', 'Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Haiku 5.5 (más rápido y barato)']].map(([v, l]) => `<option value="${v}"${state.claudeModel === v ? ' selected' : ''}>${l}</option>`).join('')}</select><span class="note">Para Preguntar. Leer capturas usa siempre Opus 5.5.</span></div>
           <div class="actions">${state.claudeOn ? '<button class="btn danger" data-action="claude-off">Apagar</button>' : '<button class="btn primary" data-action="claude-on">Activar</button>'}</div>
         </section>
+        <section class="panel panel-pad form">
+          <h2>Mensajes</h2>
+          <div class="field"><label for="waMode">Abrir WhatsApp en</label><select id="waMode" style="max-width:280px"><option value="web"${waMode() === 'web' ? ' selected' : ''}>WhatsApp Web (navegador)</option><option value="app"${waMode() === 'app' ? ' selected' : ''}>App de WhatsApp</option></select><span class="note">En Linux no hay app de WhatsApp, así que se usa WhatsApp Web.</span></div>
+        </section>
         <section class="panel panel-pad">
           <h2 style="margin-bottom:12px">Tus tipos de reunión</h2>
           <ul class="list">${CAL_TYPES.map((t) => `
@@ -1208,22 +1228,49 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const enc = encodeURIComponent;
     const k = small ? 'btn small' : 'btn';
     const b = [];
-    if (digits) b.push(`<a class="${k}" href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a>`);
+    if (digits) b.push(`<a class="${k}" href="${waLink(digits)}" target="_blank" rel="noopener">WhatsApp</a>`);
     if (digits) b.push(`<a class="${k}" href="https://t.me/+${digits}" target="_blank" rel="noopener">Telegram</a>`);
     if (c.email) b.push(`<a class="${k}" href="https://mail.google.com/mail/u/0/#search/${enc(`from:${c.email} OR to:${c.email}`)}" target="_blank" rel="noopener">Gmail</a>`);
     if (c.linkedin) b.push(`<a class="${k}" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>`);
     return `<div class="chat-btns">${b.join('')}</div>`;
   }
-  function sendButtons(c, text, subject) {
+  // WhatsApp: on Linux there is no desktop app, so default to WhatsApp Web (skips the "open the app" landing).
+  const waModeDefault = () => /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) ? 'web' : 'app';
+  const waMode = () => { try { return localStorage.getItem('stolk-wa') || waModeDefault(); } catch { return waModeDefault(); } };
+  const waLink = (digits, text) => waMode() === 'web'
+    ? `https://web.whatsapp.com/send?phone=${digits}${text !== undefined ? `&text=${encodeURIComponent(text)}` : ''}`
+    : `https://wa.me/${digits}${text !== undefined ? `?text=${encodeURIComponent(text)}` : ''}`;
+  function sendButtons(c, text, subject, withEdit) {
     const digits = (c.phone || '').replace(/\D/g, '');
     const enc = encodeURIComponent;
     const b = [];
-    if (digits) b.push(`<a class="btn primary" href="https://wa.me/${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="WhatsApp">WhatsApp</a>`);
+    if (digits) b.push(`<a class="btn primary" href="${waLink(digits, text)}" target="_blank" rel="noopener" data-sent="WhatsApp">WhatsApp</a>`);
     if (digits) b.push(`<a class="btn" href="https://t.me/+${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="Telegram">Telegram</a>`);
     if (c.email) b.push(`<a class="btn" href="https://mail.google.com/mail/?view=cm&fs=1&to=${enc(c.email)}&su=${enc(subject)}&body=${enc(text)}" target="_blank" rel="noopener" data-sent="Gmail">Gmail</a>`);
     if (c.linkedin) b.push(`<a class="btn" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener" data-sent="LinkedIn" data-copy-first>LinkedIn (copia y abre perfil)</a>`);
     b.push('<button type="button" class="btn" data-copy-text>Copiar</button>');
+    if (withEdit) b.push('<button type="button" class="btn" data-edit-text>Editar con Claude</button><button type="button" class="btn ghost" data-undo-edit hidden>Deshacer</button>');
     return `<div class="actions">${b.join('')}</div><p class="note" style="margin:0">Se abre la app con el mensaje escrito. Tú pulsas Enviar.</p>`;
+  }
+  // Claude rewrites the typed message in place (or drafts one if the box is empty). Nothing is sent.
+  async function editWithClaude(btn, c, ta) {
+    const before = ta.value.trim();
+    const first = c.name.split(' ')[0];
+    const question = before
+      ? `Mejora este mensaje para ${c.name} (id ${c.id}): corrige faltas y que suene natural, en mi tono, sin cambiar lo que quiero decir ni alargarlo. Mensaje: «${before}»`
+      : `Escribe un mensaje corto para ${c.name} (id ${c.id}) retomando el contacto según nuestro historial.`;
+    btn.disabled = true; btn.textContent = 'Editando…'; ta.readOnly = true;
+    try {
+      const r = await Api.post('/ask', { question });
+      const text = r.draft?.cid === c.id ? r.draft.text : '';
+      if (!text) { toast(r.answer || `Claude no ha devuelto un mensaje para ${first}`); return; }
+      ta.dataset.before = ta.value;
+      ta.value = text;
+      const undo = btn.parentElement.querySelector('[data-undo-edit]');
+      if (undo) undo.hidden = false;
+      ta.focus();
+    } catch (err) { toast(err.message); }
+    finally { btn.disabled = false; btn.textContent = 'Editar con Claude'; ta.readOnly = false; }
   }
   async function handleSendClick(e, c, getText) {
     if (e.target.closest('[data-copy-text]') || e.target.closest('[data-copy-first]')) {
@@ -1376,6 +1423,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const box = e.target.closest('#personSend, #askDraft');
     if (!box) return;
     const ta = box.querySelector('textarea');
+    const edit = e.target.closest('[data-edit-text]');
+    if (edit) { editWithClaude(edit, byId(Number(box.dataset.cid || state.selectedContact)), ta); return; }
+    const undo = e.target.closest('[data-undo-edit]');
+    if (undo) { ta.value = ta.dataset.before ?? ta.value; undo.hidden = true; ta.focus(); return; }
     const link = e.target.closest('a[href][data-sent]');
     if (link) link.href = link.href.replace(/([?&](?:text|body)=)[^&]*/, (m, k) => k + encodeURIComponent(ta.value));
     handleSendClick(e, byId(Number(box.dataset.cid || state.selectedContact)), () => ta.value);
@@ -1391,6 +1442,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       act(() => Api.put(`/projects/${p.id}/people/${e.target.value}`, { role: 'Colaborador' }), ['projects'], 'Persona añadida al proyecto');
     }
   });
+  document.addEventListener('change', (e) => { if (e.target.id === 'waMode') { try { localStorage.setItem('stolk-wa', e.target.value); } catch {} render(); toast(e.target.value === 'web' ? 'WhatsApp se abrirá en el navegador' : 'WhatsApp se abrirá en la app'); } });
   document.addEventListener('change', (e) => { if (e.target.id === 'claudeModel') act(() => Api.patch('/settings', { claudeModel: e.target.value }), ['settings'], 'Modelo de Claude cambiado'); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tPanel') act(() => window.stolk.setPanel(e.target.checked), ['shell']); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tBlock') act(() => Api.patch('/settings', { blockEvents: e.target.checked }), ['settings'], e.target.checked ? 'Tus eventos bloquearán Cal.com' : 'Tus eventos ya no bloquean Cal.com'); });

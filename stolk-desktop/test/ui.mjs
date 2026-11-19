@@ -42,6 +42,19 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.evaluate(() => { location.hash = 'hoy'; });
   await page.waitForTimeout(150);
   check((await page.locator('.today-row').count()) === 3, `${label}: Hoy enseña las 3 reuniones de hoy`);
+  // Editar con Claude in a person's Conversaciones card: rewrites in place, undo restores.
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForTimeout(150);
+  await page.locator('[data-action="select-contact"]').first().click();
+  await page.waitForSelector('#personText');
+  check(!(await page.textContent('#personSend')).includes('Sin Claude'), `${label}: Conversaciones ya no dice «Sin Claude»`);
+  await page.fill('#personText', 'Holi, que t');
+  await page.click('[data-edit-text]');
+  await page.waitForFunction(() => document.getElementById('personText').value.startsWith('Holi, ¿qué tal?'));
+  check(!(await page.evaluate(() => window.STOLK_CALLS)).some((c) => /opened/.test(c)), `${label}: Editar con Claude no envía ni anota nada`);
+  await page.screenshot({ path: `${out}/${label}-editar-mensaje.png` });
+  await page.click('[data-undo-edit]');
+  check((await page.inputValue('#personText')) === 'Holi, que t', `${label}: Deshacer recupera tu texto`);
   // People picker in Nuevo proyecto: search, add chips, remove one, submit.
   await page.evaluate(() => { location.hash = 'proyectos'; });
   await page.waitForTimeout(150);
@@ -109,8 +122,14 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.evaluate(() => document.querySelector('#personSend a[data-sent]')?.addEventListener('click', (e) => e.preventDefault(), { once: true }));
   const chat = page.locator('#personSend a[data-sent]').first();
   if (await chat.count()) {
+    check((await chat.getAttribute('href')).startsWith('https://web.whatsapp.com/send?phone='), `${label}: en Linux WhatsApp abre WhatsApp Web directo`);
     await chat.click();
     await page.waitForTimeout(250);
+    await page.evaluate(() => document.querySelector('#personSend a[data-sent="Telegram"]')?.addEventListener('click', (e) => e.preventDefault(), { once: true }));
+    await page.click('#personSend a[data-sent="Telegram"]');
+    await page.waitForTimeout(250);
+    const compact = page.locator('.timeline li.opened');
+    check((await compact.count()) === 1 && (await compact.textContent()).includes('WhatsApp, Telegram'), `${label}: abrir chats sale como una sola línea corta en el Historial`);
     check((await page.evaluate(() => window.STOLK_CALLS)).some((c) => /^POST \/contacts\/\d+\/opened$/.test(c)), `${label}: abrir un chat queda en el historial`);
   } else check(false, `${label}: hay botones de chat en la ficha`);
   await page.evaluate(() => window.STOLK_FAKE_UPDATE('0.1.2'));
