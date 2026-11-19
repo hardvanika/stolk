@@ -437,6 +437,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     }
     if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
     if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.conn = v; state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.gmailConnected = !!v.gmail?.connected; state.lastSync = [v.calcom?.lastSync, v.gcal?.lastSync, v.gmail?.lastSync].filter(Boolean).sort().pop() || null; state.claudeConnected = !!v.claude?.connected; }));
+    if (want('claudeMcp')) jobs.push(Api.get('/integrations/claude').then((v) => { state.claudeMcp = v; }, () => { state.claudeMcp = null; }));
     if (want('shell') && window.stolk?.settings) jobs.push(window.stolk.settings().then((v) => { state.shell = v; }));
     await Promise.all(jobs);
   }
@@ -985,6 +986,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </section>
       </div>
       </section>
+      ${viewClaudeMcp()}
       <section class="settings-sec">
         <header><h2>Tus datos</h2></header>
         <div class="panel panel-pad form">
@@ -995,6 +997,31 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
 
   // Google's "G" mark, kept in its own colours as Google's sign-in guidelines ask.
   const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
+  // Claude desktop and Claude Code can write to Stölk through its MCP server ("pásalo a Stölk").
+  function viewClaudeMcp() {
+    const m = state.claudeMcp;
+    if (!m) return '';
+    const row = (id, name, hint) => {
+      const t = m[id] || {};
+      const btn = t.connected
+        ? `<button class="btn danger small" data-action="mcp-off" data-id="${id}">Desconectar</button>`
+        : `<button class="btn ${t.available ? 'primary' : ''} small" data-action="mcp-on" data-id="${id}">Conectar</button>`;
+      return `<li class="row" style="padding-inline:0;grid-template-columns:minmax(0,1fr) auto">
+          <div style="min-width:0"><div class="title" style="white-space:normal">${name} <span class="tag ${t.connected ? '' : 'plain'}">${t.connected ? 'Conectado' : t.available ? 'Sin conectar' : 'No encontrado'}</span></div>
+            <div class="meta" style="white-space:normal">${hint}</div></div>${btn}</li>`;
+    };
+    return `
+      <section class="settings-sec">
+        <header><h2>Pasar a Stölk desde Claude</h2><p class="note">Cuando hables con Claude, dile «pásalo a Stölk» y guardará aquí las personas, lo que hablasteis y las tareas. Claude te pide permiso antes de cada escritura. Todo se queda en tu ordenador.</p></header>
+        <div class="panel panel-pad">
+          <ul class="list">
+            ${row('desktop', 'Claude (app de escritorio)', 'Después de conectar, cierra Claude del todo y vuelve a abrirlo.')}
+            ${row('code', 'Claude Code', 'Funciona en las sesiones nuevas de Claude Code.')}
+          </ul>
+          <p class="note" style="margin:8px 0 0">Claude puede buscar, crear y actualizar personas, anotar conversaciones y crear tareas y proyectos. No puede borrar nada. En claude.ai en el navegador no funciona, porque no llega a tu ordenador.</p>
+        </div>
+      </section>`;
+  }
 
   // ---------- Capture review (global shortcut) ----------
   const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['web', 'Web']];
@@ -1370,6 +1397,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'delete-contact') modalDeleteContact(byId(Number(id)));
     else if (a === 'new-event') modalEvent();
     else if (a === 'meet') modalMeet(id ? Number(id) : null);
+    else if (a === 'mcp-on') act(() => Api.post(`/integrations/claude/${id}`), ['claudeMcp'], id === 'desktop' ? 'Conectado. Reinicia Claude para verlo.' : 'Conectado a Claude Code');
+    else if (a === 'mcp-off') act(() => Api.del(`/integrations/claude/${id}`), ['claudeMcp'], 'Desconectado');
     else if (a === 'claude-on') act(() => Api.patch('/settings', { claudeOn: true }), ['settings'], 'Claude activado');
     else if (a === 'claude-off') act(() => Api.patch('/settings', { claudeOn: false }), ['settings'], 'Claude apagado');
     else if (a === 'save-key') { const inp = document.getElementById(`key-${id}`); const key = inp.value.trim(); if (!key) { toast('Pega la clave primero'); return; } act(async () => { await Api.put(`/connections/${id}`, { apiKey: key }); inp.value = ''; }, ['connections', 'shell'], 'Clave guardada en tu ordenador'); }
@@ -1475,8 +1504,13 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
   let syncTimer = null;
   const startSync = () => { if (syncTimer) return; syncNow(false); syncTimer = setInterval(() => syncNow(false), 15 * 60 * 1000); };
-  // Coming back from the Google sign-in in the browser: refresh the connection state.
-  window.addEventListener('focus', () => { if (state.ready) load('connections').then(render).catch(() => {}); });
+  // Coming back from Claude or the Google sign-in: pick up what changed meanwhile (Claude can write through MCP).
+  window.addEventListener('focus', () => {
+    if (!state.ready) return;
+    const typing = document.activeElement?.matches?.('input, textarea, select');
+    const modalOpen = !!modalRoot.firstChild;
+    load('connections', 'contacts', 'interactions', 'projects', 'claudeMcp').then(() => { if (!typing && !modalOpen) render(); }).catch(() => {});
+  });
   if (await Api.ready()) start();
   else { main.innerHTML = '<p class="muted">Arrancando…</p>'; window.stolk?.onApiReady?.(start); }
 })();

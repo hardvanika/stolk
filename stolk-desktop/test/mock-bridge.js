@@ -4,6 +4,7 @@
   const S = JSON.parse(JSON.stringify(window.STOLK_SAMPLE));
   S.settings = { blockEvents: true, claudeOn: true, theme: 'claro', calTypes: [], claudeModel: 'claude-opus-5-5', captureShortcut: 'Ctrl+Shift+S' };
   S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: false }, gmail: { connected: false }, claude: { connected: true } };
+  S.claudeMcp = { desktop: { available: true, connected: false }, code: { available: true, connected: false } };
   let next = 5000;
   const today = window.STOLK_TODAY || new Date().toISOString().slice(0, 10);
   const name = (cid) => S.contacts.find((c) => c.id === cid)?.name || '';
@@ -39,6 +40,9 @@
     ['GET', /^\/settings$/, () => ok(S.settings)],
     ['PATCH', /^\/settings$/, (m, b) => ok(Object.assign(S.settings, b))],
     ['GET', /^\/connections$/, () => ok(S.connections)],
+    ['GET', /^\/integrations\/claude$/, () => ok(S.claudeMcp)],
+    ['POST', /^\/integrations\/claude\/(desktop|code)$/, (m) => { S.claudeMcp[m[1]].connected = true; return ok(S.claudeMcp); }],
+    ['DELETE', /^\/integrations\/claude\/(desktop|code)$/, (m) => { S.claudeMcp[m[1]].connected = false; return ok(undefined); }],
     ['PUT', /^\/connections\/(\w+)$/, (m) => { S.connections[m[1]] = { connected: true }; return ok({ ok: true }); }],
     ['POST', /^\/ask$/, (m, b) => ok(/^Mejora este mensaje para .* \(id (\d+)\)/.test(b.question)
       ? { answer: 'Lo he dejado más natural.', cites: [], draft: { cid: Number(b.question.match(/\(id (\d+)\)/)[1]), text: 'Holi, ¿qué tal? ¿Nos tomamos un café esta semana?' } }

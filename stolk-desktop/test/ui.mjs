@@ -117,6 +117,11 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.click('button[data-action=sync]');
   await page.waitForTimeout(250);
   check((await page.evaluate(() => window.STOLK_CALLS)).filter((c) => c === 'POST /sync').length >= 2, `${label}: el botón Sincronizar llama al servidor`);
+  await page.click('button[data-action=mcp-on][data-id=desktop]');
+  await page.waitForSelector('button[data-action=mcp-off][data-id=desktop]');
+  check((await page.evaluate(() => window.STOLK_CALLS)).includes('POST /integrations/claude/desktop'), `${label}: Ajustes conecta Stölk con Claude desktop`);
+  await page.locator('button[data-action=mcp-off][data-id=desktop]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(out, `${label}-ajustes-claude.png`) });
   await page.evaluate(() => { location.hash = 'contactos'; });
   await page.waitForTimeout(200);
   await page.evaluate(() => document.querySelector('#personSend a[data-sent]')?.addEventListener('click', (e) => e.preventDefault(), { once: true }));
