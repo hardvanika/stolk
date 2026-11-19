@@ -769,9 +769,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <div class="ask-wrap">
       <div class="view-head"><div><h1>Preguntar</h1></div></div>
       <form class="ask-box" id="askForm">
-        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude">${esc(a?.q || '')}</textarea>
+        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude"></textarea>
         <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit"${a?.loading ? ' disabled' : ''}>Enviar</button></div>
       </form>
+      ${a?.q ? `<p class="muted ask-q" style="margin:20px 0 0;white-space:pre-wrap">Tu pregunta: ${esc(a.q)}</p>` : ''}
       ${a?.loading ? '<p class="muted ask-loading" style="margin-top:20px" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</p>' : ''}
       ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|activ|conect/i.test(a.error) ? '<p class="note">Revisa Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
       ${a?.draft && dc ? `
