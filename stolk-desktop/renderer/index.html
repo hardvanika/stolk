@@ -172,6 +172,7 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .spinner { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid var(--line); border-top-color: currentColor; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.update-bar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); font-size: 14px; max-width: calc(100vw - 32px); }
 .cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
 
 .cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -768,9 +769,10 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <div class="ask-wrap">
       <div class="view-head"><div><h1>Preguntar</h1></div></div>
       <form class="ask-box" id="askForm">
-        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude">${esc(a?.q || '')}</textarea>
+        <textarea id="askInput" placeholder="Pregunta o pide un mensaje. Ej: escribe a Jorge para mandarle el deck" aria-label="Tu mensaje para Claude"></textarea>
         <div class="ask-foot"><span class="note">Va a Claude con los datos de Stölk que necesite para responder.</span><button class="btn primary" type="submit"${a?.loading ? ' disabled' : ''}>Enviar</button></div>
       </form>
+      ${a?.q ? `<p class="muted ask-q" style="margin:20px 0 0;white-space:pre-wrap">Tu pregunta: ${esc(a.q)}</p>` : ''}
       ${a?.loading ? '<p class="muted ask-loading" style="margin-top:20px" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</p>' : ''}
       ${a?.error ? `<section class="panel panel-pad" style="margin-top:20px"><p style="margin:0">${esc(a.error)}</p>${/clave|activ|conect/i.test(a.error) ? '<p class="note">Revisa Claude en <a href="#integraciones">Ajustes</a>.</p>' : ''}</section>` : ''}
       ${a?.draft && dc ? `
@@ -798,9 +800,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         <header><h2>Guardar personas desde la pantalla</h2><p class="note">Pulsa el atajo, arrastra un recuadro sobre el perfil, la tarjeta o el chat, y Claude rellena la ficha. Tú la revisas antes de guardar.</p></header>
         <div class="panel panel-pad form">
           <div class="field"><label for="shortcutInput">Atajo</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="shortcutInput" value="${esc(state.shell.shortcut)}" style="max-width:220px"><button class="btn" data-action="save-shortcut">Guardar atajo</button><button class="btn" data-action="capture">Probar ahora</button></div>
-            <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.shortcutActive ? 'Activo.' : 'El sistema no lo deja activo desde la app.'}</span></div>
-          ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland: GNOME no pasa los atajos globales a las apps. Crea el atajo en GNOME y funcionará igual.</p>` : ''}
-          <div class="actions"><button class="btn${state.shell.wayland ? ' primary' : ''}" data-action="gnome-shortcut">Crear atajo en GNOME</button></div>
+            <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.wayland ? (state.shell.gnome ? 'Activo en los atajos de teclado de GNOME.' : 'Pulsa Guardar atajo para activarlo.') : state.shell.shortcutActive ? 'Activo.' : 'El sistema no deja usar este atajo; prueba otro.'}</span></div>
+          ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland, donde GNOME no pasa los atajos globales a las apps. Al guardar, Stölk crea el atajo en Ajustes de GNOME → Teclado → Atajos personalizados.</p>` : ''}
           <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.</span></span></label>
         </div>
       </section>
@@ -861,7 +862,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <section class="settings-sec">
         <header><h2>Tus datos</h2></header>
         <div class="panel panel-pad form">
-          <dl class="kv"><dt>Dónde</dt><dd class="mono">~/.stolk/stolk.db</dd><dt>Personas</dt><dd>${state.contacts.length}</dd><dt>Eventos</dt><dd>${state.events.length}</dd></dl>
+          <dl class="kv"><dt>Versión</dt><dd>${esc(state.update?.version || '')} ${state.update ? (state.update.auto ? '· se actualiza sola' : '· para actualizar, instala la nueva versión desde GitHub') : ''}</dd><dt>Dónde</dt><dd class="mono">~/.stolk/stolk.db</dd><dt>Personas</dt><dd>${state.contacts.length}</dd><dt>Eventos</dt><dd>${state.events.length}</dd></dl>
         </div>
       </section>`;
   }
@@ -1161,8 +1162,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'save-key') { const inp = document.getElementById(`key-${id}`); const key = inp.value.trim(); if (!key) { toast('Pega la clave primero'); return; } act(async () => { await Api.put(`/connections/${id}`, { apiKey: key }); inp.value = ''; }, ['connections', 'shell'], 'Clave guardada en tu ordenador'); }
     else if (a === 'capture') { if (window.stolk?.capture) window.stolk.capture(); else toast('La captura solo funciona en la app de escritorio'); }
     else if (a === 'panel') act(() => window.stolk.setPanel(id === 'on'), ['shell']);
-    else if (a === 'save-shortcut') { const v = document.getElementById('shortcutInput').value.trim(); act(async () => { const r = await window.stolk.setSettings({ shortcut: v }); if (!r.ok) throw new Error(r.message); if (!r.shortcutActive) toast('Este atajo no lo deja usar el sistema. Prueba "Crear atajo en GNOME".'); }, ['shell']); }
-    else if (a === 'gnome-shortcut') act(async () => { const r = await window.stolk.installGnomeShortcut(); toast(`Atajo de GNOME creado: ${r.binding}`); }, ['shell']);
+    else if (a === 'save-shortcut') { const v = document.getElementById('shortcutInput').value.trim(); act(async () => { const r = await window.stolk.setSettings({ shortcut: v }); if (!r.ok) throw new Error(r.message); if (!r.shortcutActive) throw new Error('El sistema no deja usar este atajo; prueba otro.'); }, ['shell'], `Atajo guardado: ${v}`); }
     else if (a === 'save-capture') saveCapture();
     else if (a === 'close-capture') { state.capture = null; closeModal(); }
     else if (a === 'open-project') { state.selectedProject = Number(id); state.mobileProject = true; if (current() !== 'proyectos') location.hash = '#proyectos'; else render(); }
@@ -1225,6 +1225,19 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   });
 
   window.stolk?.onCapture?.((r) => onCapture(r));
+  // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.
+  function showUpdate(version) {
+    if (document.getElementById('updateBar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'updateBar'; bar.className = 'update-bar'; bar.setAttribute('role', 'status');
+    bar.innerHTML = `<span>Nueva versión disponible${version ? ` (${esc(version)})` : ''}</span><button class="btn primary small" type="button">Reiniciar</button><button class="btn ghost small" type="button" aria-label="Más tarde">Más tarde</button>`;
+    const [restart, later] = bar.querySelectorAll('button');
+    restart.addEventListener('click', () => window.stolk.installUpdate());
+    later.addEventListener('click', () => bar.remove());
+    document.body.appendChild(bar);
+  }
+  window.stolk?.onUpdateReady?.(showUpdate);
+  window.stolk?.updateStatus?.().then((u) => { state.update = u; if (u?.ready) showUpdate(u.ready); }).catch(() => {});
   async function start() {
     try { await load(); state.ready = true; render(); startSync(); }
     catch (err) { main.innerHTML = `<div class="empty" style="text-align:left"><h1>Stölk no encuentra su servidor local</h1><p class="sub">${esc(err.message)}</p></div>`; }

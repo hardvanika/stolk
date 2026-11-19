@@ -1,7 +1,7 @@
 {
   "name": "stolk-desktop",
   "productName": "Stölk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Stölk: personal networking CRM for your desktop.",
   "author": "hardvanika",
   "license": "UNLICENSED",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.10.0",
+    "electron-updater": "6.8.11",
     "zod": "4.6.7"
   },
   "devDependencies": {

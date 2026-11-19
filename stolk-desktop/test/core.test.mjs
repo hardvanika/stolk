@@ -46,3 +46,11 @@ test('custom keybinding list keeps existing entries and adds ours once', () => {
 test('parseContact throws when the model returns nothing parseable', async () => {
   await assert.rejects(parseContact(fakeClient(null, []), 'AAAA'), /ficha/);
 });
+
+test('gsettings values are quoted GVariant strings', async () => {
+  const { gvString } = await import('../src/shortcut.mjs');
+  assert.equal(gvString('"/opt/Stölk/stolk" --capture'), `'"/opt/Stölk/stolk" --capture'`);
+  assert.equal(gvString('<Control><Shift>s'), `'<Control><Shift>s'`);
+  assert.equal(gvString("it's"), `'it\\'s'`);
+  assert.equal(gvString('a\\b'), `'a\\\\b'`);
+});

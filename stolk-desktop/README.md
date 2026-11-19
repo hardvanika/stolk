@@ -6,8 +6,8 @@ La app de escritorio de Stölk: la misma pantalla del prototipo, un panel latera
 
 Descarga el `.AppImage` o el `.deb` de la última versión en [Releases](https://github.com/hardvanika/stolk/releases).
 
-- `.deb`: `sudo apt install ./stolk_*.deb`
-- AppImage: `chmod +x Stolk-*.AppImage` y ábrelo.
+- **AppImage (recomendado):** `chmod +x stolk-*.AppImage` y ábrelo. Se actualiza sola: descarga la versión nueva en segundo plano y te avisa con «Nueva versión disponible · Reiniciar». Si no reinicias, se instala la próxima vez que cierres Stölk.
+- `.deb`: `sudo apt install ./stolk-*-amd64.deb`. No se actualiza sola; para actualizar, descarga e instala el `.deb` nuevo.
 
 ## Claves
 
@@ -26,7 +26,7 @@ Los datos se guardan en `~/.stolk/stolk.db`.
 2. Recorta la zona donde está la persona (Esc cancela).
 3. Claude lee solo ese recorte y propone una ficha. Tú la revisas y decides si se guarda o se fusiona con un contacto existente.
 
-En GNOME con Wayland las apps no pueden registrar atajos globales. Usa el botón **Crear atajo en GNOME** en Ajustes, que añade el atajo del sistema que abre `stolk --capture`.
+En GNOME con Wayland las apps no pueden registrar atajos globales. Al pulsar **Guardar atajo** en Ajustes, Stölk lo crea en los atajos de teclado de GNOME, que abren `stolk --capture`.
 
 ## Desarrollo
 

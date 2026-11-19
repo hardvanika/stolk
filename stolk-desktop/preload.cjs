@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('stolk', {
   setPanel: (on) => ipcRenderer.invoke('window:panel', on),
   installGnomeShortcut: () => ipcRenderer.invoke('shortcut:gnome'),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
+  updateStatus: () => ipcRenderer.invoke('update:status'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateReady: (fn) => ipcRenderer.on('update:ready', (_e, v) => fn(v)),
   onCapture: (fn) => ipcRenderer.on('capture:result', (_e, r) => fn(r)),
   // Capture overlay only.
   cropDone: (rect) => ipcRenderer.send('capture:crop', rect),

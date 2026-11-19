@@ -22,12 +22,16 @@ export function addToList(current, path) {
   return `[${items.map((i) => `'${i}'`).join(', ')}]`;
 }
 
+// gsettings parses values as GVariant text; a bare value that starts with " or < is not a valid string literal,
+// so every string goes in single quotes with \ and ' escaped.
+export const gvString = (v) => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+
 export async function installGnomeShortcut({ accel, command }) {
   const { stdout } = await run('gsettings', ['get', LIST_SCHEMA, 'custom-keybindings']);
   await run('gsettings', ['set', LIST_SCHEMA, 'custom-keybindings', addToList(stdout.trim(), STOLK_PATH)]);
   const item = `${ITEM_SCHEMA}:${STOLK_PATH}`;
-  await run('gsettings', ['set', item, 'name', 'Stölk: guardar persona']);
-  await run('gsettings', ['set', item, 'command', command]);
-  await run('gsettings', ['set', item, 'binding', toGnomeBinding(accel)]);
+  await run('gsettings', ['set', item, 'name', gvString('Stölk: guardar persona')]);
+  await run('gsettings', ['set', item, 'command', gvString(command)]);
+  await run('gsettings', ['set', item, 'binding', gvString(toGnomeBinding(accel))]);
   return toGnomeBinding(accel);
 }
