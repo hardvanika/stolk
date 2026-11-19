@@ -42,6 +42,10 @@ let capturing = false;
 const settingsStore = createStore(app.getPath('userData'), 'settings.json', { shortcut: 'Ctrl+Shift+S', panel: false });
 let settings = settingsStore.read();
 const saveSettings = (patch) => { settings = { ...settings, ...patch }; settingsStore.write(settings); };
+// Wayland doesn't let apps place their own window or keep it on top, so the side panel runs Stölk under XWayland.
+const onWaylandSession = process.platform === 'linux' && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
+const usingX11ForPanel = onWaylandSession && !!settings.panel;
+if (usingX11ForPanel) app.commandLine.appendSwitch('ozone-platform', 'x11');
 // The Claude key lives only in ~/.stolk/.env, written by the server's /connections route. The shell reads it for captures.
 function envFileValue(name) {
   try {
@@ -110,7 +114,18 @@ function createWindow() {
 }
 
 function setPanel(on) {
+  // Switching between native Wayland and XWayland needs a restart.
+  if (onWaylandSession && !!on !== usingX11ForPanel) {
+    saveSettings({ panel: !!on });
+    app.isQuitting = true;
+    // Inside an AppImage, execPath lives in a mount that disappears on exit: relaunch the AppImage itself.
+    app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE, args: process.argv.slice(1).filter((a) => a !== '--capture') } : { args: process.argv.slice(1).filter((a) => a !== '--capture') });
+    app.exit(0);
+    return;
+  }
   if (on) {
+    if (win.isMaximized()) win.unmaximize();
+    if (win.isFullScreen()) win.setFullScreen(false);
     if (!settings.panel || !normalBounds) normalBounds = win.getBounds();
     const { workArea: wa } = screen.getDisplayMatching(win.getBounds());
     win.setBounds({ x: wa.x + wa.width - PANEL_WIDTH, y: wa.y, width: PANEL_WIDTH, height: wa.height });

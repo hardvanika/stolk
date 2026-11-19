@@ -54,8 +54,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 main:focus, main:focus-visible { outline: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:root { --topbar: 64px; }
+.topbar { position: sticky; top: 0; z-index: 30; height: var(--topbar); display: flex; align-items: center; justify-content: center; background: var(--rail); border-bottom: 1px solid var(--line); }
+.topbar .logo { width: 92px; display: block; }
+.topbar .logo .stroke { stroke: var(--rail-ink); }
+.topbar .logo .eye { fill: var(--rail-ink); }
+.topbar .logo .glint { fill: var(--rail); }
 .app { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100%; }
-.rail { background: var(--rail); color: var(--rail-ink); border-right: 1px solid var(--line); padding-block: 22px; padding-inline: 12px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; }
+.rail { background: var(--rail); color: var(--rail-ink); border-right: 1px solid var(--line); padding-block: 22px; padding-inline: 12px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: var(--topbar); height: calc(100vh - var(--topbar)); }
 .rail .logo { width: 84px; margin-left: 10px; display: block; }
 .rail .logo .stroke { stroke: var(--rail-ink); }
 .rail .logo .eye { fill: var(--rail-ink); }
@@ -85,6 +92,7 @@ main:focus, main:focus-visible { outline: none; }
 .led.off { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
 
 main { min-width: 0; max-width: 1180px; padding-block: 36px 72px; padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); }
+.view-head:not(:has(button, a.btn)) { display: none; }
 .view-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; margin-bottom: 28px; }
 h1 { font: 700 24px/1.2 var(--font-display); margin: 0; letter-spacing: 0; text-wrap: balance; }
 h2 { font: 700 18px/1.25 var(--font-display); margin: 0; text-wrap: balance; }
@@ -217,6 +225,9 @@ details > summary { cursor: pointer; }
 .picker-list li .muted { font-size: 12.5px; }
 .picker-list li[aria-selected="true"], .picker-list li:hover { background: var(--surface-2); }
 .picker-list .none { color: var(--muted); cursor: default; }
+.me-login { width: 100%; text-align: left; white-space: nowrap; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 10px; font: 500 13.5px var(--font-ui); color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.me-login:hover { background: var(--surface-2); }
+.me-sub { display: block; font-size: 12px; color: var(--muted); }
 .file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 13px; }
 .file-chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -235,7 +246,18 @@ details > summary { cursor: pointer; }
 .month .dow { font: 500 12px var(--font-ui); color: var(--muted); padding: 8px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .month .day { min-height: 108px; padding: 6px 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .month .dow:nth-child(7n), .month .day:nth-child(7n) { border-right: 0; }
+.month .day { cursor: pointer; }
+.month .day:hover { background: var(--surface-2); }
+.month .day:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .month .day.out { background: var(--bg); }
+.day-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.day-list li { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.day-list li:first-child { border-top: 0; }
+.day-list .t { font-variant-numeric: tabular-nums; font-weight: 600; }
+.day-list .t span { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+.day-list .what { min-width: 0; }
+.day-list .what .title { font-weight: 600; overflow-wrap: anywhere; }
+.day-list .what .meta { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
 .month .day.out .num { color: var(--muted); opacity: .6; }
 .month .num { font: 500 12.5px var(--font-ui); padding: 1px 6px; align-self: flex-start; border-radius: 6px; font-variant-numeric: tabular-nums; }
 .month .today .num { background: var(--ink); color: var(--bg); }
@@ -291,10 +313,11 @@ details > summary { cursor: pointer; }
   .how { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
-  .rail { position: sticky; top: env(safe-area-inset-top, 0px); height: auto; flex-direction: row; align-items: center; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 20; overflow-x: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  :root { --topbar: 52px; }
+  .topbar .logo { width: 72px; }
+  .rail { position: sticky; top: var(--topbar); height: auto; flex-direction: row; align-items: center; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 20; overflow-x: auto; }
   body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--rail); }
-  .rail .logo { width: 56px; margin: 0; flex: none; }
   .nav { flex-direction: row; gap: 2px; }
   .nav a { padding: 6px 9px; white-space: nowrap; font-size: 14px; }
   .nav .count, .rail-foot .me { display: none; }
@@ -341,23 +364,25 @@ details > summary { cursor: pointer; }
 }
 </style>
 
+<header class="topbar">
+  <a href="#hoy" aria-label="Stölk, inicio">
+    <svg class="logo" viewBox="-6 4 243 124" role="img" aria-label="Stölk">
+      <g class="stroke" fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M38 72C32 64 10 64 10 78C10 92 40 88 40 103C40 118 12 118 6 108"/>
+        <path transform="translate(6 0)" d="M62 30L62 102C62 111 67 113 76 113M50 67L76 67"/>
+        <circle transform="translate(13 0)" cx="110" cy="90" r="23"/>
+        <path transform="translate(14 0)" d="M152 20L152 113"/>
+        <path transform="translate(8 0)" d="M180 20L180 113M212 64L183 93M195 82L215 113"/>
+      </g>
+      <g transform="translate(13 0)">
+        <circle class="eye" cx="98" cy="44" r="9"/><circle class="eye" cx="122" cy="44" r="9"/>
+        <g><animateTransform class="spin" attributeName="transform" type="rotate" from="0 98 44" to="360 98 44" dur="2.4s" repeatCount="indefinite"/><circle class="glint" data-cx="98" cx="100.5" cy="41.5" r="4.4"/></g><g><animateTransform class="spin" attributeName="transform" type="rotate" from="0 122 44" to="360 122 44" dur="2.4s" repeatCount="indefinite"/><circle class="glint" data-cx="122" cx="124.5" cy="41.5" r="4.4"/></g>
+      </g>
+    </svg>
+  </a>
+</header>
 <div class="app">
   <aside class="rail" aria-label="Navegación">
-    <a href="#hoy" aria-label="Stölk, inicio">
-      <svg class="logo" viewBox="-6 4 243 124" role="img" aria-label="Stölk">
-        <g class="stroke" fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M38 72C32 64 10 64 10 78C10 92 40 88 40 103C40 118 12 118 6 108"/>
-          <path transform="translate(6 0)" d="M62 30L62 102C62 111 67 113 76 113M50 67L76 67"/>
-          <circle transform="translate(13 0)" cx="110" cy="90" r="23"/>
-          <path transform="translate(14 0)" d="M152 20L152 113"/>
-          <path transform="translate(8 0)" d="M180 20L180 113M212 64L183 93M195 82L215 113"/>
-        </g>
-        <g transform="translate(13 0)">
-          <circle class="eye" cx="98" cy="44" r="9"/><circle class="eye" cx="122" cy="44" r="9"/>
-          <circle class="glint" data-cx="98" cx="100.5" cy="41.5" r="4.4"/><circle class="glint" data-cx="122" cx="124.5" cy="41.5" r="4.4"/>
-        </g>
-      </svg>
-    </a>
     <nav class="nav" id="nav"></nav>
     <div class="rail-foot" id="railFoot"></div>
   </aside>
@@ -372,7 +397,7 @@ details > summary { cursor: pointer; }
 function apply(){const m=modes[i];if(m==='sistema')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m==='oscuro'?'dark':'light');const b=document.getElementById('themeBtn');if(b)b.textContent='Tema: '+m;try{localStorage.setItem('stolk-theme2',m)}catch(e){}}
 window.stolkTheme={get:()=>modes[i],set:(m)=>{i=Math.max(0,modes.indexOf(m));apply();}};apply();})();
 /* Eyes follow the cursor: each glint slides inside its eye toward the pointer, back to rest when the pointer leaves. */
-(function(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;let raf=0,px=0,py=0;
+(function(){if(matchMedia('(prefers-reduced-motion: reduce)').matches){document.querySelectorAll('.logo .spin').forEach((a)=>a.remove());return;}let raf=0,px=0,py=0;
 function move(){raf=0;document.querySelectorAll('.logo').forEach(svg=>{const m=svg.getScreenCTM();if(!m)return;svg.querySelectorAll('.glint').forEach(g=>{const cx=+g.dataset.cx+13,cy=44;const sx=m.a*cx+m.c*cy+m.e,sy=m.b*cx+m.d*cy+m.f;const dx=px-sx,dy=py-sy,d=Math.hypot(dx,dy)||1;const k=Math.min(4.2,d/12);const ox=dx/d*k-2.5,oy=dy/d*k+2.5;g.style.transform=`translate(${ox}px,${oy}px)`;});});}
 document.addEventListener('pointermove',e=>{px=e.clientX;py=e.clientY;if(!raf)raf=requestAnimationFrame(move);});
 document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .glint').forEach(g=>g.style.transform=''));})();
@@ -487,7 +512,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const link = (v) => `<a href="#${v.id}" ${v.id === cur ? 'aria-current="page"' : ''}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[v.id]}</svg>${v.label}${v.count ? `<span class="count">${v.count()}</span>` : ''}</a>`;
     const main = VIEWS.filter((v) => !v.foot);
     document.getElementById('nav').innerHTML = main.map((v, i) => (v.more && !main[i - 1].more ? '<span class="nav-sep" aria-hidden="true"></span>' : '') + link(v)).join('');
-    document.getElementById('railFoot').innerHTML = `<nav class="nav" aria-label="Ajustes">${VIEWS.filter((v) => v.foot).map(link).join('')}</nav><div class="me"><span class="avatar">IV</span>Ivan</div>`;
+    document.getElementById('railFoot').innerHTML = `<nav class="nav" aria-label="Ajustes">${VIEWS.filter((v) => v.foot).map(link).join('')}</nav>${state.gcalConnected ? '<div class="me"><span class="avatar">IV</span><span>Ivan<span class="me-sub">Google conectado</span></span></div>' : `<button class="me me-login" data-action="gcal-on">${GOOGLE_G}<span>${state.gcalStarting ? 'Termina en el navegador…' : 'Entrar con Google'}</span></button>`}`;
   }
 
   function render() {
@@ -533,7 +558,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const now = nowHM();
     return `
       <div class="view-head">
-        <div><h1>Hoy</h1><p class="sub">${esc(fmtLong(iso(TODAY)))} · ${items.length ? `${items.length} ${items.length === 1 ? 'reunión' : 'reuniones'}` : 'sin reuniones'}</p></div>
+        <div><h1 class="sr-only">Hoy</h1></div>
       </div>
       <ul class="list panel today-list">${items.map((it) => `
         <li class="row today-row ${it.end <= now ? 'past' : ''}">
@@ -569,7 +594,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const c = byId(state.selectedContact);
     return `
       <div class="view-head">
-        <div><h1>Personas</h1><p class="sub">Tu gente, con todo lo que hablasteis y cuándo.</p></div>
+        <div><h1 class="sr-only">Personas</h1></div>
         <div class="actions">${protoFlag}<button class="btn primary" data-action="new-contact">Nuevo contacto</button></div>
       </div>
       <div class="split ${state.mobileDetail ? 'has-detail' : ''}">
@@ -690,7 +715,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const ev = p?.eventId && state.events.find((e) => e.id === p.eventId);
     return `
       <div class="view-head">
-        <div><h1>Proyectos</h1><p class="sub">Quién está en cada proyecto y qué le tienes que enviar.</p></div>
+        <div><h1 class="sr-only">Proyectos</h1></div>
         <div class="actions">${protoFlag}<button class="btn primary" data-action="new-project">Nuevo proyecto</button></div>
       </div>
       <div class="split ${state.mobileProject ? 'has-detail' : ''}">
@@ -757,7 +782,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const done = state.events.filter((e) => e.status === 'hecho').sort((a, b) => b.date.localeCompare(a.date));
     return `
       <div class="view-head">
-        <div><h1>Eventos que organizas</h1><p class="sub">Al crear uno, Stölk bloquea esa franja en tu Cal.com para que nadie reserve encima.</p></div>
+        <div><h1 class="sr-only">Eventos que organizas</h1></div>
         <div class="actions">${protoFlag}<button class="btn primary" data-action="new-event">Nuevo evento</button></div>
       </div>
       <h2 style="margin:0 0 12px">Próximos</h2>
@@ -771,7 +796,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     const out = [];
     for (const e of state.events) if (e.date === dateStr) out.push({ cls: 'event', label: `${e.start} ${e.title}`, action: 'open-event', id: e.id });
     for (const e of state.events) if (e.date === dateStr && e.status === 'planeado' && state.calConnected && state.blockEvents) out.push({ cls: 'block', label: 'Bloqueado en Cal.com', action: 'open-event', id: e.id });
-    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${bookingName(b).split(' ')[0]}`, action: byId(b.cid) ? 'open-contact' : null, id: b.cid });
+    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${bookingName(b).split(' ')[0]}`, action: byId(b.cid) ? 'open-contact' : 'open-day', id: byId(b.cid) ? b.cid : dateStr });
     if (state.gcalConnected) for (const g of state.gcal) if (g.date === dateStr) out.push({ cls: 'gcal', label: `${g.start} ${g.title}`, action: 'gcal', id: g.id });
     for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${(byId(i.cid)?.name || 'contacto').split(' ')[0]}`, action: 'open-contact', id: i.cid });
     const t = (x) => /^\d\d:\d\d/.test(x.label) ? x.label.slice(0, 5) : x.cls === 'block' ? x.label : '99';
@@ -786,7 +811,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       const d = addDays(start, i);
       if (i >= 35 && d.getMonth() !== m.getMonth()) break;
       const ds = iso(d);
-      cells.push(`<div class="day ${d.getMonth() !== m.getMonth() ? 'out' : ''} ${ds === iso(TODAY) ? 'today' : ''}">
+      cells.push(`<div class="day ${d.getMonth() !== m.getMonth() ? 'out' : ''} ${ds === iso(TODAY) ? 'today' : ''}" data-action="open-day" data-id="${ds}" role="button" tabindex="0" aria-label="Ver el ${esc(fmtLong(ds))}">
         <span class="num">${d.getDate()}</span>
         ${itemsOn(ds).map((it) => `<button class="item ${it.cls}" data-action="${it.action}" data-id="${it.id}" title="${esc(it.label)}">${esc(it.label)}</button>`).join('')}
       </div>`);
@@ -800,7 +825,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     }
     return `
       <div class="view-head">
-        <div><h1>${MONTHS[m.getMonth()][0].toUpperCase() + MONTHS[m.getMonth()].slice(1)} ${m.getFullYear()}</h1><p class="sub">Cal.com y Google Calendar juntos, con tus eventos y seguimientos.</p></div>
+        <div><h1>${MONTHS[m.getMonth()][0].toUpperCase() + MONTHS[m.getMonth()].slice(1)} ${m.getFullYear()}</h1></div>
         <div class="cal-toolbar">
           <button class="btn small" data-action="month" data-id="-1" aria-label="Mes anterior">←</button>
           <button class="btn small" data-action="month" data-id="0">Hoy</button>
@@ -892,7 +917,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     }).join('');
     return `
       <div class="chat">
-        <div class="chat-head"><h1>Preguntar</h1>${state.chat.length ? '<button class="btn ghost small" data-action="chat-new">Nueva conversación</button>' : ''}</div>
+        <div class="chat-head"><h1 class="sr-only">Preguntar</h1>${state.chat.length ? '<button class="btn ghost small" data-action="chat-new">Nueva conversación</button>' : ''}</div>
         <div class="chat-log" id="chatLog" aria-live="polite">
           ${msgs || '<div class="chat-empty"><p>Pregunta por tu gente, pide un mensaje o adjunta una foto o un documento.</p></div>'}
           ${state.askLoading ? '<div class="msg"><div class="bubble muted" role="status"><span class="spinner" aria-hidden="true"></span>Claude está pensando…</div></div>' : ''}
@@ -912,14 +937,14 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   // ---------- Cal.com ----------
   function viewCal() {
     return `
-      <div class="view-head"><div><h1>Ajustes</h1><p class="sub">El atajo de captura, el aspecto y lo que Stölk conecta fuera de tu ordenador.</p></div></div>
+      <div class="view-head"><div><h1 class="sr-only">Ajustes</h1></div></div>
       <section class="settings-sec">
         <header><h2>Guardar personas desde la pantalla</h2><p class="note">Pulsa el atajo, arrastra un recuadro sobre el perfil, la tarjeta o el chat, y Claude rellena la ficha. Tú la revisas antes de guardar.</p></header>
         <div class="panel panel-pad form">
           <div class="field"><label for="shortcutInput">Atajo</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="shortcutInput" value="${esc(state.shell.shortcut)}" style="max-width:220px"><button class="btn" data-action="save-shortcut">Guardar atajo</button><button class="btn" data-action="capture">Probar ahora</button></div>
             <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.wayland ? (state.shell.gnome ? 'Activo en los atajos de teclado de GNOME.' : 'Pulsa Guardar atajo para activarlo.') : state.shell.shortcutActive ? 'Activo.' : 'El sistema no deja usar este atajo; prueba otro.'}</span></div>
           ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland, donde GNOME no pasa los atajos globales a las apps. Al guardar, Stölk crea el atajo en Ajustes de GNOME → Teclado → Atajos personalizados.</p>` : ''}
-          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.</span></span></label>
+          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.${state.shell.wayland ? " En Wayland, Stölk se reinicia al activarlo o quitarlo." : ""}</span></span></label>
         </div>
       </section>
       <section class="settings-sec">
@@ -1084,6 +1109,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   const closeModal = () => { modalRoot.innerHTML = ''; };
   const openExternal = (url) => { if (window.stolk?.openExternal) window.stolk.openExternal(url); else window.open(url, '_blank', 'noopener'); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', (e) => { const d = e.target.closest?.('.month .day[data-action="open-day"]'); if (d && e.target === d && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); modalDay(d.dataset.id); } });
 
   function toast(msg) {
     const root = document.getElementById('toastRoot');
@@ -1161,13 +1187,37 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     list.addEventListener('mousedown', (e) => { const li = e.target.closest('li[data-cid]'); if (li) { e.preventDefault(); add(Number(li.dataset.cid)); } });
     chips.addEventListener('click', (e) => { const b = e.target.closest('[data-remove]'); if (b) { chosen.splice(chosen.indexOf(Number(b.dataset.remove)), 1); drawChips(); input.focus(); } });
   }
-  function modalEvent() {
+  // Click a day in Calendario: everything on that day, untruncated, with what you can do next.
+  function dayEntries(ds) {
+    const out = [];
+    for (const e of state.events) if (e.date === ds) out.push({ start: e.start, end: e.end, title: e.title, meta: [e.place, e.status === 'planeado' && state.calConnected && state.blockEvents ? 'Bloqueado en Cal.com' : ''].filter(Boolean).join(' · '), tag: '<span class="tag event">Mi evento</span>', btn: `<button class="btn small" data-action="open-event" data-id="${e.id}">Ver</button>` });
+    for (const b of state.bookings) if (b.date === ds) {
+      const c = byId(b.cid);
+      out.push({ start: b.start, end: b.end, title: c ? `${b.type} con ${c.name}` : b.type, meta: c ? [c.role, c.company].filter(Boolean).join(' · ') : [b.attendeeName, b.attendeeEmail].filter(Boolean).join(' · '), tag: '<span class="tag cal">Cal.com</span>',
+        btn: c ? `<button class="btn small" data-action="open-contact" data-id="${c.id}">Ver persona</button>` : (b.attendeeName || b.attendeeEmail) ? `<button class="btn small" data-action="save-attendee" data-id="${b.id}">Guardar persona</button>` : '' });
+    }
+    if (state.gcalConnected) for (const g of state.gcal) if (g.date === ds) out.push({ start: g.start, end: g.end, title: g.title, meta: g.place || '', tag: '<span class="tag plain">Google</span>', btn: '' });
+    for (const i of state.interactions) if (i.follow === ds) { const c = byId(i.cid); out.push({ start: '', end: '', title: `Seguir con ${c?.name || 'contacto'}`, meta: i.text || '', tag: '<span class="tag plain">Seguimiento</span>', btn: c ? `<button class="btn small" data-action="open-contact" data-id="${c.id}">Ver persona</button>` : '' }); }
+    return out.sort((a, b) => (a.start || '99').localeCompare(b.start || '99'));
+  }
+  function modalDay(ds) {
+    const items = dayEntries(ds);
+    const title = fmtLong(ds);
+    openModal(`
+      <h2>${esc(title[0].toUpperCase() + title.slice(1))}</h2>
+      ${items.length ? `<ul class="day-list">${items.map((x) => `<li>
+          <div class="t">${esc(x.start || 'Todo el día')}${x.end ? `<span>${esc(x.end)}</span>` : ''}</div>
+          <div class="what"><div class="title">${esc(x.title)}</div>${x.meta ? `<div class="meta">${esc(x.meta)}</div>` : ''}<div class="tags" style="margin-top:6px">${x.tag}</div></div>
+          <div>${x.btn}</div></li>`).join('')}</ul>` : '<p class="muted" style="margin:0">Nada este día.</p>'}
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button><button type="button" class="btn primary" data-action="new-event" data-id="${ds}">Nuevo evento este día</button></div>`, () => {});
+  }
+  function modalEvent(date) {
     openModal(`
       <h2>Nuevo evento</h2>
       <div class="form">
         <div class="field"><label for="eTitle">Nombre</label><input id="eTitle" name="title" required placeholder="Tech & Tapas #5"></div>
         <div class="form-row">
-          <div class="field"><label for="eDate">Día</label><input id="eDate" type="date" name="date" value="${iso(addDays(TODAY, 14))}" required></div>
+          <div class="field"><label for="eDate">Día</label><input id="eDate" type="date" name="date" value="${date || iso(addDays(TODAY, 14))}" required></div>
           <div class="field"><label for="ePlace">Lugar</label><input id="ePlace" name="place" placeholder="Impact Lab, Madrid" list="places"><datalist id="places">${[...new Set(state.events.map((e) => e.place))].map((p) => `<option value="${esc(p)}">`).join('')}</datalist></div>
         </div>
         <div class="form-row">
@@ -1213,8 +1263,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
 
   // New or edit: the same form. Only fields that changed are sent on edit.
-  function modalContact(c) {
-    const v = (k) => esc(c?.[k] || '');
+  function modalContact(c, prefill) {
+    const v = (k) => esc(c?.[k] || prefill?.[k] || '');
     openModal(`
       <h2>${c ? 'Editar persona' : 'Nuevo contacto'}</h2>
       <div class="form">
@@ -1395,7 +1445,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'log') modalLog(id ? Number(id) : state.selectedContact);
     else if (a === 'edit-contact') modalContact(byId(Number(id)));
     else if (a === 'delete-contact') modalDeleteContact(byId(Number(id)));
-    else if (a === 'new-event') modalEvent();
+    else if (a === 'new-event') modalEvent(/^\d{4}-\d\d-\d\d$/.test(id || '') ? id : undefined);
+    else if (a === 'open-day') modalDay(id);
+    else if (a === 'save-attendee') { const b = state.bookings.find((x) => x.id === Number(id)); if (b) modalContact(null, { name: b.attendeeName || '', email: b.attendeeEmail || '' }); }
     else if (a === 'meet') modalMeet(id ? Number(id) : null);
     else if (a === 'mcp-on') act(() => Api.post(`/integrations/claude/${id}`), ['claudeMcp'], id === 'desktop' ? 'Conectado. Reinicia Claude para verlo.' : 'Conectado a Claude Code');
     else if (a === 'mcp-off') act(() => Api.del(`/integrations/claude/${id}`), ['claudeMcp'], 'Desconectado');
@@ -1428,6 +1480,12 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'theme') { window.stolkTheme.set(id); render(); }
     else if (a === 'gcal-on') {
       const clientId = document.getElementById('g-client-id')?.value.trim(), clientSecret = document.getElementById('g-client-secret')?.value.trim();
+      if (!state.shell.googleReady && !(clientId && clientSecret)) {
+        if (current() !== 'integraciones') location.hash = '#integraciones';
+        setTimeout(() => { const d = document.querySelector('details'); if (d) { d.open = true; d.scrollIntoView({ block: 'center' }); } document.getElementById('g-client-id')?.focus(); }, 150);
+        toast('Esta versión aún no trae el acceso de Google. Pega tu Client ID y Client secret una vez.');
+        return;
+      }
       act(async () => {
         const { authUrl } = await Api.post('/connections/gcal/start', clientId || clientSecret ? { clientId, clientSecret } : {});
         openExternal(authUrl);
