@@ -11,7 +11,7 @@ import { settingsRoutes } from './routes/settings.js';
 import { syncRoutes } from './routes/sync.js';
 import { Syncer } from './sync/index.js';
 import type { Fetch } from './sync/fetch.js';
-import { ask, type CreateMessage } from './ask.js';
+import { ask, parseAttachments, parseHistory, type CreateMessage } from './ask.js';
 import { getSettings } from './routes/settings.js';
 import { ClaudeConnect, TARGETS, type Target } from './claude-connect.js';
 
@@ -45,12 +45,15 @@ export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch,
 
   // Preguntar: one Claude call with Ivan's data. Runs only when he presses Send in the app.
   r.post('/ask', async ({ body }) => {
-    const q = typeof body?.question === 'string' ? body.question.trim() : '';
+    const attachments = parseAttachments(body?.attachments);
+    const history = parseHistory(body?.history);
+    let q = typeof body?.question === 'string' ? body.question.trim() : '';
+    if (!q && attachments.length) q = '¿Qué ves en esto y qué tiene que ver con mis datos?';
     if (!q) throw new HttpError(400, 'bad_request', 'Escribe una pregunta');
     if (q.length > 4000) throw new HttpError(400, 'bad_request', 'La pregunta es demasiado larga');
     const s = getSettings(db);
     if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
-    return ask(db, env, q, { now: now(), model: s.claudeModel, create: createMessage });
+    return ask(db, env, q, { now: now(), model: s.claudeModel, create: createMessage, history, attachments });
   });
 
   // Ajustes → Claude: let Claude desktop and Claude Code save people, notes and tasks here (MCP).

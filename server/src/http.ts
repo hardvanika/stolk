@@ -64,14 +64,16 @@ export class Router {
   }
 }
 
-const MAX_BODY = 1_000_000;
+// Big enough for /ask attachments (10 MB of files is ~13.4 MB as base64) plus history, so the
+// Spanish 400 from parseAttachments, not this 413, is what an oversized upload sees.
+const MAX_BODY = 20_000_000;
 
 async function readBody(req: IncomingMessage): Promise<any> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const c of req) {
     size += (c as Buffer).length;
-    if (size > MAX_BODY) throw new HttpError(413, 'too_large', 'Body too large');
+    if (size > MAX_BODY) throw new HttpError(413, 'too_large', 'La petición es demasiado grande (máximo 10 MB de archivos)');
     chunks.push(c as Buffer);
   }
   if (!size) return undefined;
