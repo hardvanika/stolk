@@ -77,6 +77,11 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
     await page.waitForTimeout(250);
     check((await page.evaluate(() => window.STOLK_CALLS)).some((c) => /^POST \/contacts\/\d+\/opened$/.test(c)), `${label}: abrir un chat queda en el historial`);
   } else check(false, `${label}: hay botones de chat en la ficha`);
+  await page.evaluate(() => window.STOLK_FAKE_UPDATE('0.1.2'));
+  await page.waitForSelector('#updateBar');
+  check((await page.textContent('#updateBar')).includes('Nueva versión disponible'), `${label}: avisa de una versión nueva`);
+  await page.click('#updateBar .btn.primary');
+  check((await page.evaluate(() => window.STOLK_CALLS)).includes('update:install'), `${label}: Reiniciar instala la actualización`);
   await page.close();
 }
 await browser.close();

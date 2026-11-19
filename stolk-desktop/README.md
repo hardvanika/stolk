@@ -6,8 +6,8 @@ La app de escritorio de Stölk: la misma pantalla del prototipo, un panel latera
 
 Descarga el `.AppImage` o el `.deb` de la última versión en [Releases](https://github.com/hardvanika/stolk/releases).
 
-- `.deb`: `sudo apt install ./stolk_*.deb`
-- AppImage: `chmod +x Stolk-*.AppImage` y ábrelo.
+- **AppImage (recomendado):** `chmod +x stolk-*.AppImage` y ábrelo. Se actualiza sola: descarga la versión nueva en segundo plano y te avisa con «Nueva versión disponible · Reiniciar». Si no reinicias, se instala la próxima vez que cierres Stölk.
+- `.deb`: `sudo apt install ./stolk-*-amd64.deb`. No se actualiza sola; para actualizar, descarga e instala el `.deb` nuevo.
 
 ## Claves
 

@@ -58,6 +58,9 @@
     installGnomeShortcut: async () => ({ binding: '<Control><Shift>s' }),
     openExternal: async () => {},
     onCapture: (fn) => { captureCb = fn; },
+    updateStatus: async () => ({ version: '0.1.1', auto: true, ready: null }),
+    installUpdate: async () => { window.STOLK_CALLS.push('update:install'); },
+    onUpdateReady: (fn) => { window.STOLK_FAKE_UPDATE = fn; },
   };
   window.STOLK_FAKE_CAPTURE = (r) => captureCb && captureCb(r);
 })();

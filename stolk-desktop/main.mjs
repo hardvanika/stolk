@@ -10,6 +10,8 @@ import os from 'node:os';
 import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut } from './src/shortcut.mjs';
+import updaterPkg from 'electron-updater';
+const { autoUpdater } = updaterPkg;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PANEL_WIDTH = 440;
@@ -223,6 +225,23 @@ ipcMain.handle('shortcut:gnome', async () => {
 });
 ipcMain.handle('open:external', (_e, url) => openSafe(url));
 
+// ---------- Updates ----------
+// Only the AppImage can replace itself. The .deb shows nothing here; it updates by installing the new .deb.
+const canAutoUpdate = () => app.isPackaged && !!process.env.APPIMAGE;
+let updateReady = null;
+function startUpdates() {
+  if (!canAutoUpdate()) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true; // if Ivan never presses Reiniciar, it installs on the next quit
+  autoUpdater.on('update-downloaded', (info) => { updateReady = info.version; win?.webContents.send('update:ready', info.version); });
+  autoUpdater.on('error', (err) => console.warn('Actualización:', err?.message || err));
+  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  check();
+  setInterval(check, 4 * 60 * 60 * 1000);
+}
+ipcMain.handle('update:status', () => ({ version: app.getVersion(), auto: canAutoUpdate(), ready: updateReady }));
+ipcMain.handle('update:install', () => { if (updateReady) { app.isQuitting = true; autoUpdater.quitAndInstall(); } });
+
 // ---------- Lifecycle ----------
 app.on('second-instance', (_e, argv) => { if (wantsCapture(argv)) startCapture(); else showWindow(); });
 app.whenReady().then(() => {
@@ -230,6 +249,7 @@ app.whenReady().then(() => {
   createWindow();
   buildTray();
   registerShortcut();
+  startUpdates();
   if (wantsCapture(process.argv)) win.once('ready-to-show', () => startCapture());
 });
 app.on('will-quit', () => { globalShortcut.unregisterAll(); server?.kill(); });

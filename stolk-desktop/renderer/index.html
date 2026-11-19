@@ -172,6 +172,7 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .spinner { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid var(--line); border-top-color: currentColor; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.update-bar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); font-size: 14px; max-width: calc(100vw - 32px); }
 .cal-sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
 
 .cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -861,7 +862,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       <section class="settings-sec">
         <header><h2>Tus datos</h2></header>
         <div class="panel panel-pad form">
-          <dl class="kv"><dt>Dónde</dt><dd class="mono">~/.stolk/stolk.db</dd><dt>Personas</dt><dd>${state.contacts.length}</dd><dt>Eventos</dt><dd>${state.events.length}</dd></dl>
+          <dl class="kv"><dt>Versión</dt><dd>${esc(state.update?.version || '')} ${state.update ? (state.update.auto ? '· se actualiza sola' : '· para actualizar, instala la nueva versión desde GitHub') : ''}</dd><dt>Dónde</dt><dd class="mono">~/.stolk/stolk.db</dd><dt>Personas</dt><dd>${state.contacts.length}</dd><dt>Eventos</dt><dd>${state.events.length}</dd></dl>
         </div>
       </section>`;
   }
@@ -1225,6 +1226,19 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   });
 
   window.stolk?.onCapture?.((r) => onCapture(r));
+  // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.
+  function showUpdate(version) {
+    if (document.getElementById('updateBar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'updateBar'; bar.className = 'update-bar'; bar.setAttribute('role', 'status');
+    bar.innerHTML = `<span>Nueva versión disponible${version ? ` (${esc(version)})` : ''}</span><button class="btn primary small" type="button">Reiniciar</button><button class="btn ghost small" type="button" aria-label="Más tarde">Más tarde</button>`;
+    const [restart, later] = bar.querySelectorAll('button');
+    restart.addEventListener('click', () => window.stolk.installUpdate());
+    later.addEventListener('click', () => bar.remove());
+    document.body.appendChild(bar);
+  }
+  window.stolk?.onUpdateReady?.(showUpdate);
+  window.stolk?.updateStatus?.().then((u) => { state.update = u; if (u?.ready) showUpdate(u.ready); }).catch(() => {});
   async function start() {
     try { await load(); state.ready = true; render(); startSync(); }
     catch (err) { main.innerHTML = `<div class="empty" style="text-align:left"><h1>Stölk no encuentra su servidor local</h1><p class="sub">${esc(err.message)}</p></div>`; }
