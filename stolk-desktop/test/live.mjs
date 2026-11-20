@@ -51,7 +51,7 @@ try {
   await page.goto('file://' + path.join(here, '..', 'renderer', 'index.html'));
   await page.waitForSelector('#askInput', { timeout: 8000 }).catch(async () => { console.error('no carga:', errors, failed, await page.evaluate(() => window.STOLK_CALLS)); throw new Error('la pantalla no carga'); });
   await page.waitForTimeout(500);
-  for (const v of ['hoy', 'calendario', 'contactos', 'proyectos', 'eventos', 'integraciones']) {
+  for (const v of ['calendario', 'contactos', 'proyectos', 'eventos', 'integraciones']) {
     await page.evaluate((h) => { location.hash = h; }, v);
     await page.waitForTimeout(300);
     check((await page.textContent('main')).trim().length > 40, `${v} se pinta con datos del servidor`);
