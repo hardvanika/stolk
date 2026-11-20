@@ -230,7 +230,10 @@ async function grabScreen(display) {
         const all = screen.getAllDisplays();
         return all.length > 1 ? img.crop(displayRegion(all, display, width, height)) : img;
       }
-    } catch (err) { console.error(err.message); }
+    } catch (err) {
+      console.error(err.message);
+      try { fs.appendFileSync(path.join(app.getPath('userData'), 'stolk.log'), `${new Date().toISOString()} ${err.message}\n`); } catch {}
+    }
   }
   const sources = await desktopCapturer.getSources({
     types: ['screen'],

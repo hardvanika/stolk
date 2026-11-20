@@ -2,6 +2,7 @@
 // Electron's app.setBadgeCount only does this under Unity, so a small python3-gi helper (shipped with Ubuntu)
 // stays alive and emits the signal. The dock drops the badge when the helper's bus name goes away.
 import { spawn } from 'node:child_process';
+import { systemPython } from './portal-screenshot.mjs';
 
 export const BADGE_SCRIPT = String.raw`
 import sys
@@ -20,7 +21,7 @@ export function createLauncherBadge({ desktopId = 'stolk.desktop', run = spawn }
   let child = null, last = null, broken = false;
   const start = () => {
     if (child || broken) return child;
-    child = run('python3', ['-c', BADGE_SCRIPT, `application://${desktopId}`], { stdio: ['pipe', 'ignore', 'ignore'] });
+    child = run(systemPython(), ['-c', BADGE_SCRIPT, `application://${desktopId}`], { stdio: ['pipe', 'ignore', 'ignore'] });
     child.on('error', () => { broken = true; child = null; });
     child.on('exit', () => { child = null; });
     child.stdin.on('error', () => {});

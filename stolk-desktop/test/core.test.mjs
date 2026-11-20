@@ -89,3 +89,9 @@ test('dock badge sends counts to the helper, skipping repeats', async () => {
   assert.deepEqual(writes, ['3\n', '0\n']);
   assert.equal(args.at(-1), 'application://stolk.desktop');
 });
+
+test('systemPython prefers Ubuntu python over a conda/pyenv one in PATH', async () => {
+  const { systemPython } = await import('../src/portal-screenshot.mjs');
+  assert.equal(systemPython(() => true), '/usr/bin/python3');
+  assert.equal(systemPython(() => false), 'python3');
+});
