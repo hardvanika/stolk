@@ -60,6 +60,8 @@ Nunca busques ni devuelvas: dirección, teléfono, email personal, familia, pare
 Reglas:
 - Haz pocas búsquedas y concretas (nombre + empresa, nombre + cargo). Como mucho ${MAX_SEARCHES}. Prueba también páginas de comunidades y eventos de su sector donde suelen salir perfiles y ponentes (por ejemplo, en tecnología: AWS Community Builders o Heroes, AWS User Groups, ponentes de meetups y conferencias).
 - Puedes abrir páginas con web_fetch (como mucho ${MAX_FETCHES}): su web si Ivan la tiene, y las páginas más prometedoras de los resultados. LinkedIn no deja leer sus perfiles: no lo abras.
+- Si solo tienes el nombre de pila, busca combinándolo con cada pista por separado y juntas: empresa, partes del nombre de la empresa o de la organización, cargo, etiquetas y lo que diga "pistas" (por ejemplo "Irene START", "Irene UC3M", "Irene START UC3M RRHH"). Busca también la página de equipo u organigrama de su organización para dar con su nombre completo.
+- "pistas" son notas de Ivan (a menudo sacadas de una captura de pantalla): úsalas solo para buscar e identificar a la persona, nunca para buscar datos privados.
 - Antes de dar un dato, comprueba que es la misma persona (nombre, empresa, sector, ciudad o lo que Ivan ya sabe). Si hay varias personas con ese nombre y no puedes distinguirlas, pon confidence "baja", deja suggestions vacío y explícalo en summary.
 - Cada sugerencia y cada noticia lleva la URL exacta del resultado del que sale. No inventes URLs.
 - Sugiere un campo solo si es nuevo o distinto de lo que Ivan ya tiene.
@@ -108,7 +110,7 @@ const TOOL: Anthropic.Beta.BetaTool = {
   },
 };
 
-/** What Claude is told about the person: only professional fields, never phone, notes or the full email. */
+/** What Claude is told about the person: professional fields, tags and Ivan's notes as search hints; never phone or the full email. */
 export function personBrief(c: any): Record<string, string> {
   const out: Record<string, string> = { nombre: c.name };
   if (c.role) out.cargo = c.role;
@@ -116,6 +118,10 @@ export function personBrief(c: any): Record<string, string> {
   // web_fetch only opens URLs already in the conversation, written out in full.
   if (c.web) out.web = /^https?:\/\//i.test(c.web) ? c.web : `https://${String(c.web).trim()}`;
   if (c.linkedin) out.linkedin = c.linkedin;
+  const tags = (() => { try { return JSON.parse(c.tags || '[]'); } catch { return []; } })();
+  if (Array.isArray(tags) && tags.length) out.etiquetas = tags.join(', ');
+  const notes = String(c.notes || '').replace(/\s+/g, ' ').trim();
+  if (notes) out.pistas = notes.length > 400 ? notes.slice(0, 400) + '…' : notes;
   const domain = String(c.email || '').split('@')[1]?.toLowerCase().trim();
   if (domain && !FREE_MAIL.has(domain)) out.dominio_email = domain;
   return out;
