@@ -55,6 +55,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.evaluate(() => { location.hash = 'hoy'; });
   await page.waitForTimeout(150);
   check((await page.locator('.today-row').count()) === 3, `${label}: Hoy enseña las 3 reuniones de hoy`);
+  check((await page.evaluate(() => window.STOLK_BADGE)) >= 3, `${label}: el icono del dock lleva el número de cosas de hoy`);
   // Editar con Claude in a person's Conversaciones card: rewrites in place, undo restores.
   await page.evaluate(() => { location.hash = 'contactos'; });
   await page.waitForTimeout(150);

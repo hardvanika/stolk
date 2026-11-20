@@ -68,6 +68,7 @@
     onCapture: (fn) => { captureCb = fn; },
     updateStatus: async () => ({ version: '0.1.1', auto: true, ready: null }),
     installUpdate: async () => { window.STOLK_CALLS.push('update:install'); },
+    setBadge: async (n) => { window.STOLK_BADGE = n; return n; },
     onUpdateReady: (fn) => { window.STOLK_FAKE_UPDATE = fn; },
   };
   window.STOLK_FAKE_CAPTURE = (r) => captureCb && captureCb(r);

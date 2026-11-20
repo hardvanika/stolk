@@ -12,6 +12,7 @@ import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
 import { installDesktopEntry } from './src/desktop-entry.mjs';
 import { portalScreenshot, displayRegion } from './src/portal-screenshot.mjs';
+import { createLauncherBadge } from './src/launcher-badge.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
 
@@ -310,6 +311,9 @@ ipcMain.handle('settings:set', async (_e, patch) => {
   }
   return { ok: true, shortcutActive: shortcutWorks() };
 });
+const dockBadge = process.platform === 'linux' ? createLauncherBadge() : null;
+ipcMain.handle('badge:set', (_e, n) => { n = Math.max(0, Math.floor(Number(n) || 0)); if (dockBadge) dockBadge.set(n); else app.setBadgeCount(n); return n; });
+app.on('will-quit', () => dockBadge?.stop());
 ipcMain.handle('window:panel', (_e, on) => { setPanel(!!on); return !!on; });
 ipcMain.handle('capture:start', () => startCapture());
 ipcMain.handle('shortcut:gnome', async () => {

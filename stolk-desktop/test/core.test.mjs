@@ -79,3 +79,13 @@ test('portal screenshot reads the returned file, deletes it, and maps displays',
   const ds = [{ bounds: { x: 0, y: 0, width: 1920, height: 1080 } }, { bounds: { x: 1920, y: 0, width: 1280, height: 1024 } }];
   assert.deepEqual(displayRegion(ds, ds[1], 6400, 2160), { x: 3840, y: 0, width: 2560, height: 2048 });
 });
+
+test('dock badge sends counts to the helper, skipping repeats', async () => {
+  const { createLauncherBadge } = await import('../src/launcher-badge.mjs');
+  const writes = []; let args;
+  const fake = (cmd, a) => { args = a; return { on() {}, stdin: { on() {}, write: (s) => writes.push(s), end() {} } }; };
+  const b = createLauncherBadge({ run: fake });
+  b.set(3); b.set(3); b.set(0); b.set(-2);
+  assert.deepEqual(writes, ['3\n', '0\n']);
+  assert.equal(args.at(-1), 'application://stolk.desktop');
+});
