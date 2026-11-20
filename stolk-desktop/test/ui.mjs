@@ -36,6 +36,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
     await page.evaluate((h) => { location.hash = h; }, v);
     await page.waitForTimeout(200);
     check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: ${v} sin scroll horizontal`);
+    if (label === 'desktop') check(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight && document.querySelector('.topbar').getBoundingClientRect().top === 0), `desktop: ${v} no hace scroll de la ventana`);
     await page.screenshot({ path: `${out}/${label}-${v}.png` });
     if (v === 'calendario') check((await page.textContent('main')).includes('Lucía'), `${label}: Calendario se pinta con una reserva de alguien que no es contacto`);
     if (v === 'calendario' && label === 'desktop') {

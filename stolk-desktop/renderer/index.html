@@ -357,10 +357,19 @@ details > summary { cursor: pointer; }
   .nav-sep { width: 1px; height: 18px; margin: 0 4px; flex: none; }
 }
 @media (min-width: 761px) {
-  main.fit { height: 100vh; display: flex; flex-direction: column; padding-block: 28px 24px; }
+  /* Fixed shell: the window never scrolls. Top bar and rail stay put; only the
+     content column scrolls, and only when a view is genuinely taller than it. */
+  html, body { overflow: hidden; }
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .topbar { position: relative; flex: none; }
+  .app { flex: 1; min-height: 0; }
+  .rail { position: relative; top: 0; height: auto; min-height: 0; overflow-y: auto; }
+  main { max-width: none; padding-right: max(40px, env(safe-area-inset-right, 0px), calc(100% - 1140px)); overflow-y: auto; overscroll-behavior: contain; }
+  main.fit { display: flex; flex-direction: column; padding-block: 28px 24px; overflow: hidden; }
   main.fit .view-head { margin-bottom: 14px; }
   main.fit .month { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); }
   main.fit .month .day { min-height: 0; overflow: hidden; }
+  main.fit .chat { flex: 1; height: auto; min-height: 0; width: 100%; }
 }
 </style>
 
@@ -529,7 +538,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     renderNav();
     syncBadge();
     const v = current();
-    main.classList.toggle('fit', v === 'calendario');
+    main.classList.toggle('fit', v === 'calendario' || v === 'preguntar');
     main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
     if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
     if (v === 'preguntar') {
@@ -546,7 +555,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       form?.addEventListener('drop', (e) => { e.preventDefault(); addAskFiles([...(e.dataTransfer?.files || [])]); });
     }
   }
-  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); main.scrollTop = 0; });
 
   const protoFlag = '';
   const tagHtml = (t) => `<span class="tag">${esc(t)}</span>`;
