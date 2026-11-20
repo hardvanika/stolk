@@ -51,7 +51,7 @@
     ['POST', /^\/ask$/, (m, b) => ok(/^Mejora este mensaje para .* \(id (\d+)\)/.test(b.question)
       ? { answer: 'Lo he dejado más natural.', cites: [], draft: { cid: Number(b.question.match(/\(id (\d+)\)/)[1]), text: 'Holi, ¿qué tal? ¿Nos tomamos un café esta semana?' } }
       : /escribe/i.test(b.question)
-      ? { answer: 'Te dejo un mensaje para Jorge.', cites: [{ type: 'contact', id: 2 }], draft: { cid: 2, text: 'Hola Jorge, te paso el deck actualizado de Voltia. Un abrazo, Ivan' }, emotion: 'wink' }
+      ? { answer: 'Te dejo un mensaje para Jorge.', cites: [{ type: 'contact', id: 2 }], draft: { cid: 2, text: 'Hola Jorge, te paso el deck actualizado de Voltia. Un abrazo, Ivan', channel: 'linkedin' }, emotion: 'wink' }
       : { answer: 'En Tech & Tapas #3 conociste a Lucía Romero y Jorge Sanz.', cites: [{ type: 'contact', id: 1 }, { type: 'contact', id: 2 }], draft: null, emotion: 'happy' })],
   ];
   let captureCb = null;

@@ -60,6 +60,7 @@ export class Syncer {
     else {
       try {
         const bookings = await this.syncCalcomBookings(cal);
+        await this.syncCalLinks(cal);
         const blocks = getSettings(this.db).blockEvents ? await this.syncBlocks(cal) : 0;
         out.calcom = { ok: true, bookings, blocks };
         this.state('calcom', true, null);
@@ -96,6 +97,15 @@ export class Syncer {
   private contactIdByEmail(email: string): number | null {
     const r = this.db.prepare('SELECT id FROM contacts WHERE email_norm = ? ORDER BY id LIMIT 1').get(normEmail(email)) as any;
     return r?.id ?? null;
+  }
+
+  /** Keep Ivan's booking links in settings.calLinks so Preguntar can put the right one in a message. */
+  async syncCalLinks(cal: CalcomClient): Promise<number> {
+    const me = await cal.me();
+    const links = await cal.bookingLinks(me.username);
+    this.db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .run('calLinks', JSON.stringify(links));
+    return links.length;
   }
 
   async syncCalcomBookings(cal: CalcomClient): Promise<number> {

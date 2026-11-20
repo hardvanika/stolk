@@ -26,6 +26,9 @@ export interface CalBooking {
   metadata?: Record<string, string>;
 }
 
+/** A public booking page of Ivan's, for Preguntar to put in drafted messages. */
+export interface CalLink { title: string; minutes: number; url: string }
+
 export class CalcomClient {
   constructor(private apiKey: string, private f: Fetch = fetch) {}
 
@@ -52,6 +55,19 @@ export class CalcomClient {
       if (!cursor || !res.pagination?.hasMore) break;
     }
     return out;
+  }
+
+  /** Ivan's visible event types as booking links (cal.com/<user>/<slug>), shortest first. */
+  async bookingLinks(username: string): Promise<CalLink[]> {
+    const list = await this.req(`/event-types?${new URLSearchParams({ username })}`, CAL_VERSIONS.eventTypes);
+    return ((list.data ?? []) as any[])
+      .filter((e) => !e.hidden && e.slug && e.slug !== BLOCK_SLUG)
+      .map((e) => ({
+        title: String(e.title ?? e.slug),
+        minutes: Number(e.lengthInMinutes ?? e.length ?? 0),
+        url: typeof e.bookingUrl === 'string' && /^https:\/\//.test(e.bookingUrl) ? e.bookingUrl : `https://cal.com/${username}/${e.slug}`,
+      }))
+      .sort((a, b) => a.minutes - b.minutes);
   }
 
   /** Find or create the hidden event type used to block slots. Returns its id. */
