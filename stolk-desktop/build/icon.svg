@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Stölk app icon">
 <title>Stölk app icon</title>
-<g transform="translate(76.8 76.8) scale(0.7)">
+<g transform="translate(48.64 48.64) scale(0.81)">
 <rect width="512" height="512" rx="112" fill="#101010"/><circle cx="276" cy="276" r="112" fill="none" stroke="#FFFFFF" stroke-width="56"/><g transform="rotate(-45 276 276)"><circle cx="220" cy="86" r="38" fill="#FFFFFF"/><circle cx="233.3" cy="72.7" r="10.6" fill="#101010"/><circle cx="332" cy="86" r="38" fill="#FFFFFF"/><circle cx="345.3" cy="72.7" r="10.6" fill="#101010"/></g></g>
 </svg>

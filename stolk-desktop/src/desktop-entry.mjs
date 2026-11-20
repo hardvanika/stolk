@@ -40,6 +40,8 @@ export function installDesktopEntry({ execPath, iconPng, dataHome }) {
   if (!fs.existsSync(icon) || !fs.readFileSync(icon).equals(iconData)) {
     fs.mkdirSync(iconDir, { recursive: true });
     fs.writeFileSync(icon, iconData, { mode: 0o644 });
+    // GNOME keeps showing the old icon until the theme folder's mtime changes.
+    try { const now = new Date(); fs.utimesSync(path.join(dataHome, 'icons', 'hicolor'), now, now); } catch {}
     changed = true;
   }
   return changed;
