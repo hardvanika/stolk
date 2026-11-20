@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync } from 'n
 import { dirname } from 'node:path';
 
 /** Keys the server knows about. Values live only in ~/.stolk/.env (mode 600) or the process env. */
-export const SECRET_KEYS = ['ANTHROPIC_API_KEY', 'CALCOM_API_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'] as const;
+export const SECRET_KEYS = ['ANTHROPIC_API_KEY', 'CALCOM_API_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN', 'NOTION_TOKEN'] as const;
 export type SecretKey = (typeof SECRET_KEYS)[number];
 
 export class EnvFile {

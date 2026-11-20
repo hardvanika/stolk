@@ -104,6 +104,16 @@ It works as a chat. Send the earlier turns as `history: [{role: "user"|"assistan
 
 This is for personal use, on one person at a time, and it's off until `enrichOn: true` (Ajustes → Claude). `POST /contacts/:id/enrich` asks Claude, with web search (up to 5 searches), for that person's public professional info: current role, company, company site, public profile URL and recent news. Every fact comes with its source. The results are saved in `enrichments` as suggestions, and the contact only changes through `POST /contacts/:id/enrichment/apply {fields}`. Claude gets only the name, role, company, web, LinkedIn and a work email domain. It never gets phone numbers, notes or the full email. Facts whose source didn't appear in the search results are dropped. The response includes `searches` and an approximate `costUsd`, typically 0.10 to 0.30 $ with Opus 5.5.
 
+## Notion (read-only)
+
+Ivan creates an internal integration at notion.so/profile/integrations with only "Read content", saves its secret with `PUT /connections/notion {apiKey}` (stored as `NOTION_TOKEN` in `~/.stolk/.env`), and shares pages or databases with it in Notion (··· → Conexiones). Each `POST /sync` then:
+
+- lists everything shared (`/v1/search`, API version 2022-06-28; up to 400 pages and 100 databases) and keeps each page's title, URL, database, properties and body as plain text (6,000 characters, nested blocks one level deep) in `notion_pages`. A body is read again only when `last_edited_time` changes. Pages no longer shared, archived or in the trash are dropped.
+- links pages to people when the title is exactly their name (one match only) or a property is their email, and to projects when the title is the project's title. `PUT /notion/pages/:id/links {type, id}` links by hand; `DELETE /notion/pages/:id/links/:type/:ref` unlinks, and an unlinked auto match stays unlinked.
+- never writes to Notion: the only calls are `POST /search` and `GET /blocks/:id/children`, about 3 per second.
+
+`GET /notion/pages` (`?q=`, `?contact=`, `?project=`) lists pages; `GET /notion/pages/:id` includes the text. Preguntar gets up to about 40,000 characters of Notion, linked pages first and then the most recently edited, 3,000 characters per page. `DELETE /connections/notion` removes the token and everything read from Notion.
+
 ## Claude ("pásalo a Stölk")
 
 `dist/mcp.js` is an MCP server on stdio. Claude desktop or Claude Code start it, and it opens the same `~/.stolk/stolk.db` as the app, so when Ivan tells Claude "pásalo a Stölk", the people, conversations and tasks land here. It goes through the same routes as the HTTP API (in process, no token or port needed).
