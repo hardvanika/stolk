@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { getDb } from '../src/db/open';
 import { embedPending, listPlaces, saveCapture } from '../src/db/repo';
@@ -7,6 +7,7 @@ import { matchPlace } from '../src/geo/geo';
 import { currentCoords } from '../src/geo/location';
 import { embedDocument, embedReady } from '../src/ai/local';
 import type { Coords } from '../src/db/types';
+import { alert } from '../src/alert';
 import { Button, Field, s } from '../src/ui';
 
 export default function Capture() {
@@ -32,7 +33,7 @@ export default function Capture() {
   }, []);
 
   const save = async () => {
-    if (!f.fullName.trim()) return Alert.alert('Add a name first');
+    if (!f.fullName.trim()) return alert('Add a name first');
     setBusy(true);
     try {
       const db = await getDb();

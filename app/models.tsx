@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { MODELS, download, isDownloaded, modelFile, type ModelKind } from '../src/ai/models';
 import { embedDocument } from '../src/ai/local';
 import { getDb } from '../src/db/open';
 import { embedPending } from '../src/db/repo';
+import { alert } from '../src/alert';
 import { Button, s } from '../src/ui';
 
 export default function Models() {
@@ -16,7 +17,7 @@ export default function Models() {
       await download(kind);
       if (kind === 'embed') await embedPending(await getDb(), embedDocument);
     } catch (e) {
-      Alert.alert('Download failed', String(e));
+      alert('Download failed', String(e));
     } finally {
       setBusy(null);
       force((n) => n + 1);

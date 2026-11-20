@@ -7,6 +7,9 @@
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "desktop": "expo export -p web && electron desktop/main.mjs",
+    "desktop:dev": "STOLK_DEV_URL=http://localhost:8081 electron desktop/main.mjs",
+    "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --no-warnings --test test/*.test.ts"
   },
@@ -15,6 +18,7 @@
     "fts5": true
   },
   "dependencies": {
+    "@expo/metro-runtime": "~57.0.16",
     "@op-engineering/op-sqlite": "^18.2.5",
     "expo": "~57.0.25",
     "expo-build-properties": "~57.0.22",
@@ -25,15 +29,24 @@
     "expo-router": "~57.0.23",
     "expo-status-bar": "~57.0.1",
     "llama.rn": "0.13.0-rc.6",
-    "react": "^19.2.3",
+    "node-llama-cpp": "^3.21.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "react-native": "^0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "~4.26.0"
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "^0.21.2",
+    "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",
     "@types/react": "~19.2",
+    "electron": "^44.4.5",
     "tsx": "^4.23.15",
     "typescript": "~5.9"
+  },
+  "allowScripts": {
+    "node-llama-cpp@3.21.1": true,
+    "esbuild@0.28.2": true
   }
 }
