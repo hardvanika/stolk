@@ -11,7 +11,7 @@ import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
 import { installDesktopEntry } from './src/desktop-entry.mjs';
-import { portalScreenshot, displayRegion } from './src/portal-screenshot.mjs';
+import { portalScreenshot } from './src/portal-screenshot.mjs';
 import { createLauncherBadge } from './src/launcher-badge.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
@@ -219,43 +219,47 @@ function registerShortcut() {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-// On Wayland, the screenshot portal (non-interactive) avoids GNOME's "Share screen" dialog on every capture.
-// desktopCapturer stays as the fallback (X11, or a desktop without the portal).
+// X11 (or a desktop without the screenshot portal): grab the screen, then Stölk's own overlay picks the area.
 async function grabScreen(display) {
-  if (isWayland()) {
-    try {
-      const img = nativeImage.createFromBuffer(await portalScreenshot());
-      if (!img.isEmpty()) {
-        const { width, height } = img.getSize();
-        const all = screen.getAllDisplays();
-        return all.length > 1 ? img.crop(displayRegion(all, display, width, height)) : img;
-      }
-    } catch (err) {
-      console.error(err.message);
-      try { fs.appendFileSync(path.join(app.getPath('userData'), 'stolk.log'), `${new Date().toISOString()} ${err.message}\n`); } catch {}
-    }
-  }
   const sources = await desktopCapturer.getSources({
     types: ['screen'],
     thumbnailSize: { width: Math.round(display.size.width * display.scaleFactor), height: Math.round(display.size.height * display.scaleFactor) },
   });
   const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
-  if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla. En Wayland, acepta el permiso de captura de GNOME.');
+  if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla.');
   return src.thumbnail;
 }
+async function pickWithOverlay() {
+  const wasVisible = win.isVisible();
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  if (wasVisible) { win.hide(); await wait(250); } // keep Stölk itself out of the shot
+  const shot = await grabScreen(display);
+  const rect = await pickArea(display, shot);
+  if (!rect) return null;
+  const size = shot.getSize();
+  return shot.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
+}
+// Wayland: GNOME's own screenshot UI picks the area in one step and hands back only that part.
+async function pickWithPortal() {
+  const png = await portalScreenshot({ interactive: true });
+  return png ? nativeImage.createFromBuffer(png) : null;
+}
+function logError(err) {
+  console.error(err.message);
+  try { fs.appendFileSync(path.join(app.getPath('userData'), 'stolk.log'), `${new Date().toISOString()} ${err.message}\n`); } catch {}
+}
+
 async function startCapture() {
   if (capturing || !win) return;
   capturing = true;
-  const wasVisible = win.isVisible();
   try {
-    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-    if (wasVisible) { win.hide(); await wait(250); } // keep Stölk itself out of the shot
-    const shot = await grabScreen(display);
-    const rect = await pickArea(display, shot);
+    let crop;
+    if (isWayland()) {
+      try { crop = await pickWithPortal(); if (!crop) return; } // null: Ivan pressed Esc
+      catch (err) { logError(err); crop = await pickWithOverlay(); }
+    } else crop = await pickWithOverlay();
     showWindow();
-    if (!rect) return;
-    const size = shot.getSize();
-    let crop = shot.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
+    if (!crop || crop.isEmpty()) return;
     if (crop.getSize().width > 1600) crop = crop.resize({ width: 1600 });
     const image = crop.toDataURL();
     win.webContents.send('capture:result', { status: 'reading', image });
