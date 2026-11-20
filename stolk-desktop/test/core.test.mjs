@@ -98,3 +98,21 @@ test('systemPython prefers Ubuntu python over a conda/pyenv one in PATH', async 
   assert.equal(systemPython(() => true), '/usr/bin/python3');
   assert.equal(systemPython(() => false), 'python3');
 });
+
+test('panel extension is copied once and enabled through gsettings', async () => {
+  const { installPanelExtension, copyExtension, EXTENSION_UUID } = await import('../src/gnome-panel.mjs');
+  const from = new URL('../gnome-extension/', import.meta.url).pathname;
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'stolk-ext-'));
+  const calls = [];
+  const exec = async (cmd, args) => {
+    calls.push([cmd, ...args].join(' '));
+    if (args[0] === 'get') return { stdout: "['ubuntu-dock@ubuntu.com']\n" };
+    if (args[0] === 'info') return { stdout: 'State: INITIALIZED\n' };
+    return { stdout: '' };
+  };
+  assert.equal(await installPanelExtension({ from, dataHome: home, exec }), 'relogin');
+  assert.ok(fs.existsSync(path.join(home, 'gnome-shell/extensions', EXTENSION_UUID, 'extension.js')));
+  assert.ok(calls.includes(`gsettings set org.gnome.shell enabled-extensions ['ubuntu-dock@ubuntu.com', '${EXTENSION_UUID}']`));
+  assert.equal(copyExtension({ from, dataHome: home }), false);
+  assert.equal(await installPanelExtension({ from, dataHome: home, exec: async () => { throw new Error('no gnome'); } }), 'unavailable');
+});

@@ -10,6 +10,7 @@ import os from 'node:os';
 import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
+import { installPanelExtension } from './src/gnome-panel.mjs';
 import { installDesktopEntry } from './src/desktop-entry.mjs';
 import { portalScreenshot } from './src/portal-screenshot.mjs';
 import { createLauncherBadge } from './src/launcher-badge.mjs';
@@ -153,6 +154,17 @@ function setPanel(on) {
   }
   saveSettings({ panel: on });
   buildTray();
+  // GNOME: the Stölk panel extension reads settings.json, reserves the strip on the right and places Stölk there.
+  panelSync = on && process.platform === 'linux' ? syncPanelExtension() : Promise.resolve(null);
+}
+let panelExtension = null; // 'active' | 'relogin' | 'unavailable'
+let panelSync = Promise.resolve(null);
+async function syncPanelExtension() {
+  const dataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+  try { panelExtension = await installPanelExtension({ from: path.join(here, 'gnome-extension'), dataHome }); }
+  catch (err) { console.error('Extensión del panel:', err.message); panelExtension = 'unavailable'; }
+  win?.webContents.send('panel:extension', panelExtension);
+  return panelExtension;
 }
 
 function showWindow() {
@@ -302,7 +314,7 @@ ipcMain.handle('api:call', async (_e, method, route, body) => {
   if (!/^\/[\w\-/?=&%.:,+@]*$/.test(route) || !['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { status: 400, body: { error: { code: 'bad_call', message: 'Llamada no válida' } } };
   return serverCall(method, route, body);
 });
-ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), googleReady: !!(bundledGoogleClient() || envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
+ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), googleReady: !!(bundledGoogleClient() || envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland(), panelExtension }));
 ipcMain.handle('settings:set', async (_e, patch) => {
   const accel = typeof patch.shortcut === 'string' ? patch.shortcut.trim() : '';
   if (accel) {
@@ -318,7 +330,7 @@ ipcMain.handle('settings:set', async (_e, patch) => {
 const dockBadge = process.platform === 'linux' ? createLauncherBadge() : null;
 ipcMain.handle('badge:set', (_e, n) => { n = Math.max(0, Math.floor(Number(n) || 0)); if (dockBadge) dockBadge.set(n); else app.setBadgeCount(n); return n; });
 app.on('will-quit', () => dockBadge?.stop());
-ipcMain.handle('window:panel', (_e, on) => { setPanel(!!on); return !!on; });
+ipcMain.handle('window:panel', (_e, on) => { setPanel(!!on); return panelSync; });
 ipcMain.handle('capture:start', () => startCapture());
 ipcMain.handle('shortcut:gnome', async () => {
   const error = await syncGnome(settings.shortcut); // later shortcut changes update this GNOME binding too
