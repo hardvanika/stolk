@@ -86,8 +86,8 @@ export type CreateMessage = (
   params: Anthropic.Beta.MessageCreateParamsNonStreaming,
 ) => Promise<Anthropic.Beta.BetaMessage>;
 
-export function anthropicCreate(apiKey: string): CreateMessage {
-  const client = new Anthropic({ apiKey, maxRetries: 2, timeout: 120_000 });
+export function anthropicCreate(apiKey: string, opts: { timeout?: number; maxRetries?: number } = {}): CreateMessage {
+  const client = new Anthropic({ apiKey, maxRetries: opts.maxRetries ?? 2, timeout: opts.timeout ?? 120_000 });
   return (params) => client.beta.messages.create(params);
 }
 
