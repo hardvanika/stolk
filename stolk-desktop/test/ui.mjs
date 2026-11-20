@@ -35,7 +35,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.waitForSelector('#askDraftText');
   check((await page.inputValue('#askDraftText')).includes('deck'), `${label}: Preguntar deja el borrador editable`);
   await page.screenshot({ path: `${out}/${label}-preguntar.png` });
-  for (const v of ['hoy', 'calendario', 'contactos', 'proyectos', 'eventos', 'integraciones']) {
+  for (const v of ['calendario', 'contactos', 'proyectos', 'eventos', 'integraciones']) {
     await page.evaluate((h) => { location.hash = h; }, v);
     await page.waitForTimeout(200);
     check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: ${v} sin scroll horizontal`);
@@ -56,7 +56,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
       await page.click('[data-action="close-modal"].btn');
     }
   }
-  await page.evaluate(() => { location.hash = 'hoy'; });
+  await page.evaluate(() => { location.hash = 'preguntar'; });
   await page.waitForTimeout(150);
   check((await page.locator('.today-row').count()) === 3, `${label}: Hoy enseña las 3 reuniones de hoy`);
   check((await page.evaluate(() => window.STOLK_BADGE)) >= 3, `${label}: el icono del dock lleva el número de cosas de hoy`);
