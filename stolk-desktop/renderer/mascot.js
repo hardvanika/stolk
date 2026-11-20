@@ -2,7 +2,7 @@
    The ring is the body and the umlaut dots are the eyes; the light glint in each eye is where it looks.
    Usage: const m = StolkMascot.mount(gElement, { drop: 80 });
           m.set('idle' | 'listen' | 'think' | 'sleep');   // a state that lasts until changed
-          m.play('hop' | 'happy' | 'thanks' | 'eyeroll' | 'wink' | 'surprised' | 'sad' | 'celebrate' | 'angry' | 'error' | 'blink');
+          m.play('hop' | 'jump' | 'happy' | 'thanks' | 'eyeroll' | 'wink' | 'surprised' | 'sad' | 'celebrate' | 'angry' | 'error' | 'blink');
           m.ping();                                      // tiny nod, e.g. on each keystroke while listening
    Colours: ink is currentColor, the glint uses var(--m-bg). Everything runs on the Web Animations API. */
 (function (global) {
@@ -52,6 +52,18 @@
         ], { duration: 1600 })),
       ];
     },
+
+    // Small hop in place, for most questions (the big hop out of the bar is only now and then).
+    jump: (m) => [
+      m.body.animate([
+        { transform: 'translate(0,0) scale(1,1)' },
+        { transform: 'translate(0,0) scale(1.1,.88)', offset: 0.18, easing: 'ease-out' },
+        { transform: 'translate(0,-18px) scale(.95,1.06)', offset: 0.5, easing: 'ease-in' },
+        { transform: 'translate(0,0) scale(1.06,.94)', offset: 0.82, easing: 'ease-out' },
+        { transform: 'translate(0,0) scale(1,1)' },
+      ], { duration: 650 }),
+      ...m.glints.map((g) => g.animate([{ transform: at(REST.x, REST.y) }, { transform: at(0, -3.5), offset: 0.45 }, { transform: at(REST.x, REST.y) }], { duration: 650 })),
+    ],
 
     // "¿Cómo voy a saber eso?": looks down, rolls the eyes up and across, lids drop, sighs.
     eyeroll: (m) => [

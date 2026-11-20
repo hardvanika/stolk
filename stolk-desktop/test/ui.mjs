@@ -27,7 +27,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.fill('#askInput', '¿A quién conocí en Tech & Tapas #3?');
   await page.click('#askForm button[type=submit]');
   await page.waitForSelector('.answer');
-  check((await page.evaluate(() => window.__plays)).join(',') === 'hop,happy', `${label}: la ö salta al preguntar y pone la emoción de Claude`);
+  check((await page.evaluate(() => window.__plays)).join(',') .replace('jump', 'hop') === 'hop,happy', `${label}: la ö salta al preguntar y pone la emoción de Claude`);
   check((await page.textContent('.answer')).includes('Lucía'), `${label}: Preguntar muestra la respuesta del servidor`);
   check((await page.inputValue('#askInput')) === '', `${label}: la caja de Preguntar se vacía al enviar`);
   await page.fill('#askInput', 'escribe a Jorge para el deck');

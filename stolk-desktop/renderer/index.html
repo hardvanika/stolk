@@ -931,6 +931,9 @@ window.stolkO = (() => {
   // Claude tags each answer with an emotion; the ö acts it out. A draft with no emotion gets a wink.
   const ASK_EMOTIONS = ['happy', 'thanks', 'eyeroll', 'wink', 'surprised', 'sad', 'celebrate', 'angry'];
   const askEmotion = (r) => (ASK_EMOTIONS.includes(r.emotion) ? r.emotion : r.draft ? 'wink' : null);
+  // The big hop out of the top bar is a treat, not a habit: about one question in five, and never twice within 3 minutes.
+  let lastBigHop = 0;
+  const bigHop = () => { const now = Date.now(); if (now - lastBigHop < 180000 || Math.random() > 0.2) return false; lastBigHop = now; return true; };
   async function claudeAsk(q) {
     let mood = null;
     const files = state.askFiles.splice(0);
@@ -939,7 +942,7 @@ window.stolkO = (() => {
     state.askLoading = true;
     render();
     stolkO.set('idle');
-    stolkO.play('hop').then(() => { if (state.askLoading) stolkO.set('think'); });
+    stolkO.play(bigHop() ? 'hop' : 'jump').then(() => { if (state.askLoading) stolkO.set('think'); });
     const body = { question: q };
     if (history.length && !state.askBasic) body.history = history;
     if (files.length) body.attachments = files.map((f) => ({ name: f.name, mediaType: f.mediaType, data: f.data }));

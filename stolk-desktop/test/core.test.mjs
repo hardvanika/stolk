@@ -63,9 +63,17 @@ test('AppImage desktop entry points at the AppImage and matches the window class
   assert.match(e, /^Icon=stolk$/m);
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'stolk-xdg-'));
   const png = path.join(home, 'i.png'); fs.writeFileSync(png, Buffer.from([1, 2, 3]));
+  const apps = path.join(home, 'icons/hicolor/512x512/apps');
+  fs.mkdirSync(apps, { recursive: true }); fs.writeFileSync(path.join(apps, 'stolk.png'), 'old');
   assert.equal(installDesktopEntry({ execPath: '/a.AppImage', iconPng: png, dataHome: home }), true);
   assert.equal(installDesktopEntry({ execPath: '/a.AppImage', iconPng: png, dataHome: home }), false);
-  assert.ok(fs.existsSync(path.join(home, 'icons/hicolor/512x512/apps/stolk.png')));
+  const icons = fs.readdirSync(apps);
+  assert.equal(icons.length, 1);
+  assert.match(icons[0], /^stolk-[0-9a-f]{8}\.png$/);
+  assert.match(fs.readFileSync(path.join(home, 'applications/stolk.desktop'), 'utf8'), new RegExp(`^Icon=${icons[0].slice(0, -4)}$`, 'm'));
+  fs.writeFileSync(png, Buffer.from([4, 5]));
+  assert.equal(installDesktopEntry({ execPath: '/a.AppImage', iconPng: png, dataHome: home }), true);
+  assert.equal(fs.readdirSync(apps).length, 1);
 });
 
 test('portal screenshot reads the returned file, deletes it, and maps displays', async () => {
