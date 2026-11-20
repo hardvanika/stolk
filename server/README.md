@@ -91,7 +91,7 @@ While the Google project is in "Testing", Google expires the sign-in after 7 day
 
 ## Preguntar
 
-`POST /ask {question}` sends the question to Claude together with a compact JSON copy of your data: contacts (no phone numbers), the last year of history, relations, events, projects, bookings, and the next 90 days of Google Calendar. It returns `{answer, cites, draft, used, model}`. When you ask it to write to someone, `draft` is `{cid, text}`, and the app shows it next to the send buttons. Nothing is ever sent automatically.
+`POST /ask {question}` sends the question to Claude together with a compact JSON copy of your data: contacts (no phone numbers), the last year of history, relations, events, projects, bookings, and the next 90 days of Google Calendar. It returns `{answer, offTopic, emotion, cites, draft, used, model}`. Preguntar sticks to Stölk: off-topic asks (code, homework, general knowledge) get a short refusal with `offTopic: true` and `emotion: "angry"`. It allows 6 questions a minute and 200 a day (429 `ask_rate_limited` / `ask_daily_limit`), and answers are capped at 2,500 characters. When you ask it to write to someone, `draft` is `{cid, text}`, and the app shows it next to the send buttons. Nothing is ever sent automatically.
 
 It works as a chat. Send the earlier turns as `history: [{role: "user"|"assistant", text}]` (up to 20) and files as `attachments: [{name, mediaType, data}]` with `data` in base64. Photos (PNG, JPG, WebP, GIF), PDFs and text files (TXT, MD, CSV) are accepted, up to 5 files and 10 MB in total. Anything else gets a 400 with a message in Spanish.
 
@@ -99,6 +99,10 @@ It works as a chat. Send the earlier turns as `history: [{role: "user"|"assistan
 - It uses structured output, so the reply is always valid JSON. Server-side fallbacks are on, so if the model declines a question, another model answers instead.
 - The data block is prompt-cached, so follow-up questions within a few minutes are cheaper.
 - Turn it off with `claudeOn: false` in Ajustes.
+
+## Buscar info pública
+
+This is for personal use, on one person at a time, and it's off until `enrichOn: true` (Ajustes → Claude). `POST /contacts/:id/enrich` asks Claude, with web search (up to 5 searches), for that person's public professional info: current role, company, company site, public profile URL and recent news. Every fact comes with its source. The results are saved in `enrichments` as suggestions, and the contact only changes through `POST /contacts/:id/enrichment/apply {fields}`. Claude gets only the name, role, company, web, LinkedIn and a work email domain. It never gets phone numbers, notes or the full email. Facts whose source didn't appear in the search results are dropped. The response includes `searches` and an approximate `costUsd`, typically 0.10 to 0.30 $ with Opus 5.5.
 
 ## Claude ("pásalo a Stölk")
 

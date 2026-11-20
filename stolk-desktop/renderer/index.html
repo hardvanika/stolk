@@ -57,10 +57,8 @@ main:focus, main:focus-visible { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 :root { --topbar: 64px; }
 .topbar { position: sticky; top: 0; z-index: 30; height: var(--topbar); display: flex; align-items: center; justify-content: center; background: var(--rail); border-bottom: 1px solid var(--line); }
-.topbar .logo { width: 92px; display: block; }
+.topbar .logo { width: 92px; display: block; overflow: visible; color: var(--rail-ink); --m-bg: var(--rail); }
 .topbar .logo .stroke { stroke: var(--rail-ink); }
-.topbar .logo .eye { fill: var(--rail-ink); }
-.topbar .logo .glint { fill: var(--rail); }
 .app { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100%; }
 .rail { background: var(--rail); color: var(--rail-ink); border-right: 1px solid var(--line); padding-block: 22px; padding-inline: 12px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: var(--topbar); height: calc(100vh - var(--topbar)); }
 .rail .logo { width: 84px; margin-left: 10px; display: block; }
@@ -74,7 +72,7 @@ main:focus, main:focus-visible { outline: none; }
 .nav .dot { display: none; }
 .ev-link { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--ink); text-underline-offset: 3px; overflow-wrap: anywhere; }
 .nav-sep { display: block; height: 1px; background: var(--line); margin: 10px 10px; }
-.logo .glint { transition: transform .15s ease-out; }
+.logo .m-look { transition: transform .15s ease-out; }
 .nav .ico { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav .count { margin-left: auto; font-size: 12px; color: var(--rail-muted); font-variant-numeric: tabular-nums; }
 .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; }
@@ -294,6 +292,11 @@ details > summary { cursor: pointer; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; overflow-wrap: anywhere; }
 .note { font-size: 12.5px; color: var(--muted); }
+.enrich-h { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+.enrich-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.enrich-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.enrich-list a, .note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
 .slot { border: 1px solid var(--line-strong); background: transparent; border-radius: 8px; padding: 8px 0; text-align: center; cursor: pointer; font: 500 13px var(--font-ui); font-variant-numeric: tabular-nums; }
 .slot:hover { border-color: var(--ink); }
@@ -357,10 +360,19 @@ details > summary { cursor: pointer; }
   .nav-sep { width: 1px; height: 18px; margin: 0 4px; flex: none; }
 }
 @media (min-width: 761px) {
-  main.fit { height: 100vh; display: flex; flex-direction: column; padding-block: 28px 24px; }
+  /* Fixed shell: the window never scrolls. Top bar and rail stay put; only the
+     content column scrolls, and only when a view is genuinely taller than it. */
+  html, body { overflow: hidden; }
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .topbar { position: relative; flex: none; }
+  .app { flex: 1; min-height: 0; }
+  .rail { position: relative; top: 0; height: auto; min-height: 0; overflow-y: auto; }
+  main { max-width: none; padding-right: max(40px, env(safe-area-inset-right, 0px), calc(100% - 1140px)); overflow-y: auto; overscroll-behavior: contain; }
+  main.fit { display: flex; flex-direction: column; padding-block: 28px 24px; overflow: hidden; }
   main.fit .view-head { margin-bottom: 14px; }
   main.fit .month { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); }
   main.fit .month .day { min-height: 0; overflow: hidden; }
+  main.fit .chat { flex: 1; height: auto; min-height: 0; width: 100%; }
 }
 </style>
 
@@ -370,13 +382,14 @@ details > summary { cursor: pointer; }
       <g class="stroke" fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
         <path d="M38 72C32 64 10 64 10 78C10 92 40 88 40 103C40 118 12 118 6 108"/>
         <path transform="translate(6 0)" d="M62 30L62 102C62 111 67 113 76 113M50 67L76 67"/>
-        <circle transform="translate(13 0)" cx="110" cy="90" r="23"/>
         <path transform="translate(14 0)" d="M152 20L152 113"/>
         <path transform="translate(8 0)" d="M180 20L180 113M212 64L183 93M195 82L215 113"/>
       </g>
-      <g transform="translate(13 0)">
-        <circle class="eye" cx="98" cy="44" r="9"/><circle class="eye" cx="122" cy="44" r="9"/>
-        <g><animateTransform class="spin" attributeName="transform" type="rotate" from="0 98 44" to="360 98 44" dur="2.4s" repeatCount="indefinite"/><circle class="glint" data-cx="98" cx="100.5" cy="41.5" r="4.4"/></g><g><animateTransform class="spin" attributeName="transform" type="rotate" from="0 122 44" to="360 122 44" dur="2.4s" repeatCount="indefinite"/><circle class="glint" data-cx="122" cx="124.5" cy="41.5" r="4.4"/></g>
+      <!-- The ö is the mascot (mascot.js). This static copy shows until it mounts. -->
+      <g id="logoO" transform="translate(13 0)">
+        <circle cx="110" cy="90" r="23" fill="none" stroke="currentColor" stroke-width="14"/>
+        <circle cx="98" cy="44" r="9" fill="currentColor"/><circle cx="122" cy="44" r="9" fill="currentColor"/>
+        <circle cx="100.5" cy="41.5" r="4.4" fill="var(--rail)"/><circle cx="124.5" cy="41.5" r="4.4" fill="var(--rail)"/>
       </g>
     </svg>
   </a>
@@ -392,15 +405,22 @@ details > summary { cursor: pointer; }
 <div id="toastRoot"></div>
 
 <script src="api.js"></script>
+<script src="mascot.js"></script>
 <script>
 (function(){const modes=['claro','oscuro','sistema'];let i=0;try{i=Math.max(0,modes.indexOf(localStorage.getItem('stolk-theme2')||'claro'))}catch(e){}
 function apply(){const m=modes[i];if(m==='sistema')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m==='oscuro'?'dark':'light');const b=document.getElementById('themeBtn');if(b)b.textContent='Tema: '+m;try{localStorage.setItem('stolk-theme2',m)}catch(e){}}
 window.stolkTheme={get:()=>modes[i],set:(m)=>{i=Math.max(0,modes.indexOf(m));apply();}};apply();})();
-/* Eyes follow the cursor: each glint slides inside its eye toward the pointer, back to rest when the pointer leaves. */
-(function(){if(matchMedia('(prefers-reduced-motion: reduce)').matches){document.querySelectorAll('.logo .spin').forEach((a)=>a.remove());return;}let raf=0,px=0,py=0;
-function move(){raf=0;document.querySelectorAll('.logo').forEach(svg=>{const m=svg.getScreenCTM();if(!m)return;svg.querySelectorAll('.glint').forEach(g=>{const cx=+g.dataset.cx+13,cy=44;const sx=m.a*cx+m.c*cy+m.e,sy=m.b*cx+m.d*cy+m.f;const dx=px-sx,dy=py-sy,d=Math.hypot(dx,dy)||1;const k=Math.min(4.2,d/12);const ox=dx/d*k-2.5,oy=dy/d*k+2.5;g.style.transform=`translate(${ox}px,${oy}px)`;});});}
-document.addEventListener('pointermove',e=>{px=e.clientX;py=e.clientY;if(!raf)raf=requestAnimationFrame(move);});
-document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .glint').forEach(g=>g.style.transform=''));})();
+/* The ö mascot: eyes follow the cursor and blink; it hops, thinks and reacts in Preguntar; sleeps after 3 minutes idle. */
+window.stolkO = (() => {
+  const g = document.getElementById('logoO');
+  if (!window.StolkMascot || !g) return { set() {}, play: async () => {}, ping() {}, state: 'idle' };
+  const o = StolkMascot.mount(g, { drop: 80 });
+  let idleT = 0;
+  const wake = () => { if (o.state === 'sleep') o.set('idle'); clearTimeout(idleT); idleT = setTimeout(() => { if (o.state === 'idle') o.set('sleep'); }, 180000); };
+  ['pointermove', 'keydown', 'pointerdown', 'focus'].forEach((t) => window.addEventListener(t, wake, { passive: true }));
+  wake();
+  return o;
+})();
 
 (async () => {
   const TODAY = new Date();
@@ -435,6 +455,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     blockEvents: true,
     contacts: [], events: [], interactions: [], bookings: [], gcal: [], relations: [], projects: [], today: [],
     claudeOn: false,
+    enrichOn: false, enrich: {}, enriching: null,
     shell: { shortcut: 'Ctrl+Shift+S', panel: false, hasKey: false, shortcutActive: false, wayland: false },
     capture: null,
     selectedProject: null,
@@ -460,7 +481,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       const from = iso(addDays(new Date(m.getFullYear(), m.getMonth(), 1), -7)), to = iso(addDays(new Date(m.getFullYear(), m.getMonth() + 1, 0), 14));
       jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; /* events come complete from /events; /calendar's are a slim copy */ }));
     }
-    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
+    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.enrichOn = !!v.enrichOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
     if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.conn = v; state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.gmailConnected = !!v.gmail?.connected; state.lastSync = [v.calcom?.lastSync, v.gcal?.lastSync, v.gmail?.lastSync].filter(Boolean).sort().pop() || null; state.claudeConnected = !!v.claude?.connected; }));
     if (want('claudeMcp')) jobs.push(Api.get('/integrations/claude').then((v) => { state.claudeMcp = v; }, () => { state.claudeMcp = null; }));
     if (want('shell') && window.stolk?.settings) jobs.push(window.stolk.settings().then((v) => { state.shell = v; }));
@@ -468,8 +489,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
   // Runs an action against the server, reloads what it touched, re-renders, and reports errors as a toast.
   async function act(fn, reload = [], okMsg) {
-    try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) toast(okMsg); return true; }
-    catch (err) { toast(err.message || 'Algo ha fallado'); return false; }
+    try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) { toast(okMsg); stolkO.play('celebrate'); } return true; }
+    catch (err) { toast(err.message || 'Algo ha fallado'); stolkO.play('error'); return false; }
   }
 
   // Cal.com, Google Calendar and Gmail: at startup, every 15 minutes and from "Sincronizar".
@@ -529,7 +550,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     renderNav();
     syncBadge();
     const v = current();
-    main.classList.toggle('fit', v === 'calendario');
+    main.classList.toggle('fit', v === 'calendario' || v === 'preguntar');
     main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
     if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
     if (v === 'preguntar') {
@@ -546,7 +567,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
       form?.addEventListener('drop', (e) => { e.preventDefault(); addAskFiles([...(e.dataTransfer?.files || [])]); });
     }
   }
-  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); main.scrollTop = 0; });
 
   const protoFlag = '';
   const tagHtml = (t) => `<span class="tag">${esc(t)}</span>`;
@@ -640,6 +661,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         </div>
         <p style="margin:14px 0 0">${esc(c.notes)}</p>
       </section>
+      ${enrichHtml(c)}
       <section class="panel panel-pad form" style="margin-top:16px" id="personSend">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>Conversaciones</h3>${chatButtons(c, true)}</div>
         <div class="field"><label for="personText">Escribir mensaje</label><textarea id="personText" placeholder="Escribe aquí y elige por dónde enviarlo…"></textarea></div>
@@ -661,6 +683,49 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
             <div class="what">${esc(i.text)}</div>
             ${i.follow ? `<div class="followup">Seguimiento: <span class="mono ${i.follow < iso(TODAY) ? 'since stale' : ''}">${fmt(i.follow)}</span></div>` : ''}
           </li>`).join('') || '<li class="muted">Aún no hay nada registrado.</li>'}</ol>
+      </section>`;
+  }
+
+  // Buscar info pública: one web lookup per person, only on click. Suggestions change nothing until accepted.
+  const ENRICH_LABEL = { role: 'Cargo', company: 'Empresa', web: 'Web', linkedin: 'LinkedIn' };
+  const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+  const extLink = (u, text) => /^https?:\/\//i.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(text)}</a>` : esc(text);
+  async function loadEnrich(cid) {
+    state.enrich[cid] = null;
+    try { state.enrich[cid] = await Api.get(`/contacts/${cid}/enrichment`); } catch { state.enrich[cid] = null; return; }
+    if (state.selectedContact === cid && current() === 'contactos') render();
+  }
+  async function runEnrich(cid) {
+    if (state.enriching) return;
+    state.enriching = cid; render();
+    try { state.enrich[cid] = await Api.post(`/contacts/${cid}/enrich`); }
+    catch (err) { toast(err.message); }
+    finally { state.enriching = null; render(); }
+  }
+  function enrichHtml(c) {
+    if (!state.enrichOn) return '';
+    if (!(c.id in state.enrich)) loadEnrich(c.id);
+    const e = state.enrich[c.id];
+    const busy = state.enriching === c.id;
+    const btn = `<button class="btn small" data-action="enrich" data-id="${c.id}"${state.enriching ? ' disabled' : ''}>${busy ? 'Buscando…' : e ? 'Buscar de nuevo' : 'Buscar info pública'}</button>`;
+    let body;
+    if (busy) body = '<p class="note" style="margin:0">Buscando en la web su cargo, empresa y noticias. Puede tardar un minuto.</p>';
+    else if (!e) body = `<p class="note" style="margin:0">Busca en la web el cargo, la empresa y las noticias públicas de ${esc(c.name.split(' ')[0])}. Verás de dónde sale cada dato y nada cambia en su ficha hasta que lo aceptes. Cada búsqueda cuesta unos céntimos de tu clave de Claude.</p>`;
+    else {
+      const sugg = e.suggestions.map((s) => `<li class="enrich-row"><span><span class="muted">${ENRICH_LABEL[s.field]}:</span> ${esc(s.value)} <span class="note">· ${extLink(s.source, hostOf(s.source))}</span></span>${s.applied ? '<span class="tag plain">Guardado</span>' : `<button class="btn small" data-action="enrich-apply" data-id="${c.id}:${s.field}">Aceptar</button>`}</li>`).join('');
+      const news = e.news.map((n) => `<li>${extLink(n.url, n.title)}${n.date ? ` <span class="note mono">${esc(n.date)}</span>` : ''}${n.note ? `<div class="note">${esc(n.note)}</div>` : ''}</li>`).join('');
+      const srcs = e.sources.map((x) => extLink(x.url, hostOf(x.url))).join(' · ');
+      body = `
+        ${e.confidence !== 'alta' ? `<p class="note" style="margin:0 0 8px"><span class="tag plain">${e.confidence === 'baja' ? 'No está claro que sea esta persona' : 'Revisa que sea esta persona'}</span></p>` : ''}
+        ${e.summary ? `<p style="margin:0">${esc(e.summary)}</p>` : ''}
+        ${sugg ? `<h4 class="enrich-h">Sugerencias para su ficha</h4><ul class="enrich-list">${sugg}</ul>` : ''}
+        ${news ? `<h4 class="enrich-h">Noticias</h4><ul class="enrich-list">${news}</ul>` : ''}
+        ${srcs ? `<p class="note" style="margin:10px 0 0">Fuentes: ${srcs}</p>` : ''}
+        <p class="note" style="margin:10px 0 0">Buscado el ${fmt(e.createdAt.slice(0, 10))} · ${e.searches} búsquedas · unos ${e.costUsd.toFixed(2)} $ · <button class="linkish" data-action="enrich-delete" data-id="${c.id}">Borrar</button></p>`;
+    }
+    return `<section class="panel panel-pad" style="margin-top:16px" id="personEnrich">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><h3>Info pública</h3>${btn}</div>
+        ${body}
       </section>`;
   }
 
@@ -863,12 +928,18 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, badge: 'Pr' }; }
     return null;
   }).filter(Boolean);
+  // Claude tags each answer with an emotion; the ö acts it out. A draft with no emotion gets a wink.
+  const ASK_EMOTIONS = ['happy', 'thanks', 'eyeroll', 'wink', 'surprised', 'sad', 'celebrate', 'angry'];
+  const askEmotion = (r) => (ASK_EMOTIONS.includes(r.emotion) ? r.emotion : r.draft ? 'wink' : null);
   async function claudeAsk(q) {
+    let mood = null;
     const files = state.askFiles.splice(0);
     const history = state.chat.filter((m) => !m.error && m.text).slice(-20).map((m) => ({ role: m.role, text: m.text }));
     state.chat.push({ role: 'user', text: q, files: files.map((f) => ({ name: f.name, mediaType: f.mediaType, url: f.url })) });
     state.askLoading = true;
     render();
+    stolkO.set('idle');
+    stolkO.play('hop').then(() => { if (state.askLoading) stolkO.set('think'); });
     const body = { question: q };
     if (history.length && !state.askBasic) body.history = history;
     if (files.length) body.attachments = files.map((f) => ({ name: f.name, mediaType: f.mediaType, data: f.data }));
@@ -881,12 +952,16 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         state.askBasic = true; delete body.history; r = await Api.post('/ask', body);
       }
       state.chat.push({ role: 'assistant', text: r.answer || '', cites: askCites(r), draft: r.draft || null });
+      mood = askEmotion(r);
     } catch (err) {
       const msg = /unknown field: attachments/i.test(err.message) ? 'Tu servidor de Stölk aún no acepta archivos. Actualiza Stölk y vuelve a probar.' : err.message;
       state.chat.push({ role: 'assistant', error: msg });
+      mood = err.body?.emotion === 'angry' || err.body?.error?.emotion === 'angry' ? 'angry' : 'error';
     }
     state.askLoading = false;
     render();
+    stolkO.set('idle');
+    if (mood) stolkO.play(mood);
   }
   function readAskFile(file) {
     return new Promise((resolve, reject) => {
@@ -1004,6 +1079,11 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
             <span class="note">Se guarda solo en <span class="mono">~/.stolk/.env</span> (ANTHROPIC_API_KEY).</span></div>
           <div class="field"><label for="claudeModel">Modelo</label><select id="claudeModel" style="max-width:280px">${[['claude-opus-5-5', 'Opus 5.5 (mejor respuesta)'], ['claude-sonnet-5-5', 'Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Haiku 5.5 (más rápido y barato)']].map(([v, l]) => `<option value="${v}"${state.claudeModel === v ? ' selected' : ''}>${l}</option>`).join('')}</select><span class="note">Para Preguntar. Leer capturas usa siempre Opus 5.5.</span></div>
           <div class="actions">${state.claudeOn ? '<button class="btn danger" data-action="claude-off">Apagar</button>' : '<button class="btn primary" data-action="claude-on">Activar</button>'}</div>
+          <div class="field" style="border-top:1px solid var(--line);padding-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><label style="margin:0">Buscar info pública</label><span class="tag ${state.enrichOn ? '' : 'plain'}">${state.enrichOn ? 'Activo' : 'Apagado'}</span></div>
+            <span class="note">Añade un botón en cada persona para buscar en la web su cargo, empresa y noticias públicas, con las fuentes. Solo busca cuando lo pulsas, se guarda en tu ordenador y no cambia nada hasta que lo aceptes. Usa tu clave de Claude, con unos céntimos por búsqueda.</span>
+            <div class="actions">${state.enrichOn ? '<button class="btn" data-action="enrich-off">Desactivar</button>' : '<button class="btn" data-action="enrich-on">Activar</button>'}</div>
+          </div>
         </section>
         <section class="panel panel-pad form">
           <h2>Mensajes</h2>
@@ -1062,6 +1142,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['web', 'Web']];
   async function onCapture(r) {
     state.capture = { ...(state.capture || {}), ...r };
+    stolkO.set(r.status === 'reading' ? 'think' : 'idle');
+    if (r.status === 'ok') stolkO.play(r.card?.found === false ? 'sad' : 'happy');
+    if (r.status === 'error') stolkO.play('error');
     if (r.status === 'ok') {
       const q = new URLSearchParams(Object.entries({ email: r.card.email, phone: r.card.phone, name: r.card.name }).filter(([, v]) => v)).toString();
       try { state.capture.matches = q ? await Api.get(`/contacts/match?${q}`) : []; } catch { state.capture.matches = []; }
@@ -1462,6 +1545,11 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     else if (a === 'mcp-on') act(() => Api.post(`/integrations/claude/${id}`), ['claudeMcp'], id === 'desktop' ? 'Conectado. Reinicia Claude para verlo.' : 'Conectado a Claude Code');
     else if (a === 'mcp-off') act(() => Api.del(`/integrations/claude/${id}`), ['claudeMcp'], 'Desconectado');
     else if (a === 'claude-on') act(() => Api.patch('/settings', { claudeOn: true }), ['settings'], 'Claude activado');
+    else if (a === 'enrich-on') act(() => Api.patch('/settings', { enrichOn: true }), ['settings'], 'Buscar info pública activado');
+    else if (a === 'enrich-off') act(() => Api.patch('/settings', { enrichOn: false }), ['settings'], 'Buscar info pública desactivado');
+    else if (a === 'enrich') runEnrich(Number(id));
+    else if (a === 'enrich-apply') { const [cid, field] = id.split(':'); act(async () => { const r = await Api.post(`/contacts/${cid}/enrichment/apply`, { fields: [field] }); state.enrich[cid] = r.enrichment; }, ['contacts'], `${ENRICH_LABEL[field]} guardado en su ficha`); }
+    else if (a === 'enrich-delete') act(async () => { await Api.del(`/contacts/${id}/enrichment`); state.enrich[id] = null; }, [], 'Búsqueda borrada');
     else if (a === 'claude-off') act(() => Api.patch('/settings', { claudeOn: false }), ['settings'], 'Claude apagado');
     else if (a === 'save-key') { const inp = document.getElementById(`key-${id}`); const key = inp.value.trim(); if (!key) { toast('Pega la clave primero'); return; } act(async () => { await Api.put(`/connections/${id}`, { apiKey: key }); inp.value = ''; }, ['connections', 'shell'], 'Clave guardada en tu ordenador'); }
     else if (a === 'capture') { if (window.stolk?.capture) window.stolk.capture(); else toast('La captura solo funciona en la app de escritorio'); }
@@ -1551,6 +1639,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (q || state.askFiles.length) claudeAsk(q || 'Mira lo que te adjunto.');
   });
 
+  // While Ivan types in Preguntar the ö looks down at the box and nods with each key.
+  document.addEventListener('input', (e) => { if (e.target.id !== 'askInput' || state.askLoading) return; stolkO.set(e.target.value.trim() ? 'listen' : 'idle'); stolkO.ping(); });
+  document.addEventListener('focusout', (e) => { if (e.target.id === 'askInput' && stolkO.state === 'listen') stolkO.set('idle'); });
   document.addEventListener('click', (e) => { const x = e.target.closest('[data-remove-file]'); if (x) { state.askFiles.splice(Number(x.dataset.removeFile), 1); renderComposerFiles(); } });
   window.stolk?.onCapture?.((r) => onCapture(r));
   // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.

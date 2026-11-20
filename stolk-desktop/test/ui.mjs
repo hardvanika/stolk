@@ -22,9 +22,12 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.clock.setFixedTime(new Date('2026-11-19T18:30:00'));
   await page.goto('file://' + path.join(here, '..', 'renderer', 'index.html'));
   await page.waitForSelector('#askInput');
+  check(await page.evaluate(() => document.querySelectorAll('#logoO .m-eye').length === 2 && !document.querySelector('.logo animateTransform')), `${label}: la ö de la barra es la mascota (dos ojos, sin giro constante)`);
+  await page.evaluate(() => { window.__plays = []; const p = window.stolkO.play; window.stolkO.play = (n) => { window.__plays.push(n); return p(n); }; });
   await page.fill('#askInput', '¿A quién conocí en Tech & Tapas #3?');
   await page.click('#askForm button[type=submit]');
   await page.waitForSelector('.answer');
+  check((await page.evaluate(() => window.__plays)).join(',') === 'hop,happy', `${label}: la ö salta al preguntar y pone la emoción de Claude`);
   check((await page.textContent('.answer')).includes('Lucía'), `${label}: Preguntar muestra la respuesta del servidor`);
   check((await page.inputValue('#askInput')) === '', `${label}: la caja de Preguntar se vacía al enviar`);
   await page.fill('#askInput', 'escribe a Jorge para el deck');
@@ -36,6 +39,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
     await page.evaluate((h) => { location.hash = h; }, v);
     await page.waitForTimeout(200);
     check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: ${v} sin scroll horizontal`);
+    if (label === 'desktop') check(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight && document.querySelector('.topbar').getBoundingClientRect().top === 0), `desktop: ${v} no hace scroll de la ventana`);
     await page.screenshot({ path: `${out}/${label}-${v}.png` });
     if (v === 'calendario') check((await page.textContent('main')).includes('Lucía'), `${label}: Calendario se pinta con una reserva de alguien que no es contacto`);
     if (v === 'calendario' && label === 'desktop') {
@@ -69,6 +73,25 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.screenshot({ path: `${out}/${label}-editar-mensaje.png` });
   await page.click('[data-undo-edit]');
   check((await page.inputValue('#personText')) === 'Holi, que t', `${label}: Deshacer recupera tu texto`);
+  // Buscar info pública: hidden until switched on in Ajustes; suggestions only change the contact when accepted.
+  check(!(await page.locator('#personEnrich').count()), `${label}: Info pública no aparece si está apagado`);
+  await page.evaluate(() => { location.hash = 'integraciones'; });
+  await page.waitForTimeout(150);
+  await page.click('[data-action="enrich-on"]');
+  await page.waitForSelector('[data-action="enrich-off"]');
+  await page.evaluate(() => { location.hash = 'contactos'; });
+  await page.waitForSelector('#personEnrich');
+  const cid = await page.evaluate(() => Number(document.querySelector('[data-action="enrich"]').dataset.id));
+  const roleBefore = await page.evaluate((id) => window.STOLK_DATA.contacts.find((c) => c.id === id).role, cid);
+  await page.click('[data-action="enrich"]');
+  await page.waitForSelector('[data-action="enrich-apply"]');
+  check((await page.textContent('#personEnrich')).includes('Head of Product') && (await page.textContent('#personEnrich')).includes('riberalabs.example'), `${label}: Info pública enseña sugerencias con su fuente`);
+  check((await page.evaluate((id) => window.STOLK_DATA.contacts.find((c) => c.id === id).role, cid)) === roleBefore, `${label}: buscar no cambia la ficha`);
+  await page.screenshot({ path: `${out}/${label}-info-publica.png` });
+  await page.click('[data-action="enrich-apply"]');
+  await page.waitForFunction(() => document.querySelector('#personEnrich')?.textContent.includes('Guardado'));
+  check((await page.evaluate((id) => window.STOLK_DATA.contacts.find((c) => c.id === id).role, cid)) === 'Head of Product', `${label}: Aceptar guarda el cargo en la ficha`);
+  check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: Info pública sin scroll horizontal`);
   // People picker in Nuevo proyecto: search, add chips, remove one, submit.
   await page.evaluate(() => { location.hash = 'proyectos'; });
   await page.waitForTimeout(150);

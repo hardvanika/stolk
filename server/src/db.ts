@@ -143,6 +143,21 @@ const MIGRATIONS: string[] = [
   -- Per-event choice to block the slot in Cal.com ("Bloquear esta franja en Cal.com").
   ALTER TABLE events ADD COLUMN block INTEGER NOT NULL DEFAULT 1;
   `,
+  `
+  -- "Buscar info pública": the last web lookup per person, as suggestions with sources (see enrich.ts).
+  CREATE TABLE enrichments (
+    cid         INTEGER PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+    created_at  TEXT NOT NULL,
+    model       TEXT NOT NULL DEFAULT '',
+    confidence  TEXT NOT NULL DEFAULT 'baja',
+    summary     TEXT NOT NULL DEFAULT '',
+    suggestions TEXT NOT NULL DEFAULT '[]',
+    news        TEXT NOT NULL DEFAULT '[]',
+    sources     TEXT NOT NULL DEFAULT '[]',
+    searches    INTEGER NOT NULL DEFAULT 0,
+    cost_usd    REAL NOT NULL DEFAULT 0
+  );
+  `,
 ];
 
 export function openDb(path: string): DB {

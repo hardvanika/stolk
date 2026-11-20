@@ -6,6 +6,8 @@ import { validate, type Spec } from '../util.js';
 const DEFAULTS = {
   blockEvents: true,
   claudeOn: true,
+  // "Buscar info pública" on a person's card. Off until Ivan turns it on in Ajustes.
+  enrichOn: false,
   theme: 'claro',
   captureShortcut: 'Ctrl+Shift+S',
   claudeModel: 'claude-opus-5-5',
@@ -18,6 +20,7 @@ const DEFAULTS = {
 const SPEC: Spec = {
   blockEvents: { kind: 'bool' },
   claudeOn: { kind: 'bool' },
+  enrichOn: { kind: 'bool' },
   theme: { kind: { enum: ['claro', 'oscuro', 'sistema'] } },
   // Electron accelerator syntax, e.g. "Ctrl+Shift+S". The desktop registers it.
   captureShortcut: { kind: 'string' },
