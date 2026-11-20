@@ -31,7 +31,12 @@ print(out['uri'])
 `;
 
 // Resolves to PNG bytes; the portal's file (usually in ~/Pictures/Screenshots) is removed afterwards.
-export function portalScreenshot({ run = execFile, python = 'python3' } = {}) {
+// Ubuntu's own python3 has python3-gi; a conda/pyenv python3 earlier in PATH usually doesn't.
+export function systemPython(exists = fs.existsSync) {
+  return exists('/usr/bin/python3') ? '/usr/bin/python3' : 'python3';
+}
+
+export function portalScreenshot({ run = execFile, python = systemPython() } = {}) {
   return new Promise((resolve, reject) => {
     run(python, ['-c', PORTAL_SCRIPT], { timeout: 25000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(`Portal de capturas: ${String(stderr || err.message).trim()}`));

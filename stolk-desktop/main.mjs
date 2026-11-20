@@ -1,6 +1,6 @@
 // Stölk desktop shell: window and side panel, tray, the capture shortcut, and the local server process.
 // Contacts and everything else live in the local server (server/ in this repo); the shell only talks to it.
-import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, desktopCapturer, screen, shell, nativeImage } from 'electron';
+import { app, dialog, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, desktopCapturer, screen, shell, nativeImage } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -49,10 +49,15 @@ let capturing = false;
 const settingsStore = createStore(app.getPath('userData'), 'settings.json', { shortcut: 'Ctrl+Shift+S', panel: false });
 let settings = settingsStore.read();
 const saveSettings = (patch) => { settings = { ...settings, ...patch }; settingsStore.write(settings); };
-// Wayland doesn't let apps place their own window or keep it on top, so the side panel runs Stölk under XWayland.
+// Wayland doesn't let apps place their own window or keep it on top. Running under XWayland for that left the
+// window unpainted with software rendering (x11_software_bitmap_presenter), so on Wayland the panel is just a narrow window.
 const onWaylandSession = process.platform === 'linux' && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
-const usingX11ForPanel = onWaylandSession && !!settings.panel;
-if (usingX11ForPanel) app.commandLine.appendSwitch('ozone-platform', 'x11');
+// Logging must never crash Stölk: once the terminal that started it closes, writes to stdout/stderr fail with EIO.
+for (const stream of [process.stdout, process.stderr]) stream?.on?.('error', () => {});
+process.on('uncaughtException', (err) => {
+  if (['EIO', 'EPIPE'].includes(err?.code)) return;
+  try { dialog.showErrorBox('Stölk ha tenido un error', String(err?.stack || err)); } catch {}
+});
 // On Linux the GPU process crashed on start (Wayland + Vulkan, exit 139), which left an instance with no window
 // holding the single-instance lock. Stölk draws plain UI, so software rendering is enough; settings.gpu: true opts back in.
 if (process.platform === 'linux' && settings.gpu !== true) app.disableHardwareAcceleration();
@@ -134,22 +139,14 @@ function createWindow() {
 }
 
 function setPanel(on) {
-  // Switching between native Wayland and XWayland needs a restart.
-  if (onWaylandSession && !!on !== usingX11ForPanel) {
-    saveSettings({ panel: !!on });
-    app.isQuitting = true;
-    // Inside an AppImage, execPath lives in a mount that disappears on exit: relaunch the AppImage itself.
-    app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE, args: process.argv.slice(1).filter((a) => a !== '--capture') } : { args: process.argv.slice(1).filter((a) => a !== '--capture') });
-    app.exit(0);
-    return;
-  }
   if (on) {
     if (win.isMaximized()) win.unmaximize();
     if (win.isFullScreen()) win.setFullScreen(false);
     if (!settings.panel || !normalBounds) normalBounds = win.getBounds();
     const { workArea: wa } = screen.getDisplayMatching(win.getBounds());
+    // On Wayland the compositor ignores the position and keep-on-top; the window still gets narrow and tall.
     win.setBounds({ x: wa.x + wa.width - PANEL_WIDTH, y: wa.y, width: PANEL_WIDTH, height: wa.height });
-    win.setAlwaysOnTop(true, 'floating');
+    if (!onWaylandSession) win.setAlwaysOnTop(true, 'floating');
   } else {
     win.setAlwaysOnTop(false);
     if (normalBounds) win.setBounds(normalBounds);
@@ -233,7 +230,10 @@ async function grabScreen(display) {
         const all = screen.getAllDisplays();
         return all.length > 1 ? img.crop(displayRegion(all, display, width, height)) : img;
       }
-    } catch (err) { console.error(err.message); }
+    } catch (err) {
+      console.error(err.message);
+      try { fs.appendFileSync(path.join(app.getPath('userData'), 'stolk.log'), `${new Date().toISOString()} ${err.message}\n`); } catch {}
+    }
   }
   const sources = await desktopCapturer.getSources({
     types: ['screen'],

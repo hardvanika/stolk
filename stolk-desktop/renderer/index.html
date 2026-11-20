@@ -210,7 +210,7 @@ details > summary { cursor: pointer; }
 .composer-row { display: flex; align-items: flex-end; gap: 8px; }
 .composer textarea { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; font: inherit; font-size: 15px; line-height: 1.5; padding: 7px 4px; max-height: 200px; color: var(--ink); }
 .composer textarea:focus { outline: none; }
-.icon-btn { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.icon-btn { width: 36px; height: 36px; flex: none; border-radius: 8px; border: 0; background: transparent; color: var(--ink); font-size: 26px; font-weight: 300; line-height: 1; cursor: pointer; }
 .icon-btn:hover { background: var(--surface-2); }
 .picker { position: relative; display: flex; flex-direction: column; gap: 8px; }
 .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -954,7 +954,7 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
           <div class="field"><label for="shortcutInput">Atajo</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="shortcutInput" value="${esc(state.shell.shortcut)}" style="max-width:220px"><button class="btn" data-action="save-shortcut">Guardar atajo</button><button class="btn" data-action="capture">Probar ahora</button></div>
             <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.wayland ? (state.shell.gnome ? 'Activo en los atajos de teclado de GNOME.' : 'Pulsa Guardar atajo para activarlo.') : state.shell.shortcutActive ? 'Activo.' : 'El sistema no deja usar este atajo; prueba otro.'}</span></div>
           ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland, donde GNOME no pasa los atajos globales a las apps. Al guardar, Stölk crea el atajo en Ajustes de GNOME → Teclado → Atajos personalizados.</p>` : ''}
-          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.${state.shell.wayland ? " En Wayland, Stölk se reinicia al activarlo o quitarlo." : ""}</span></span></label>
+          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.${state.shell.wayland ? " En Wayland, Ubuntu no deja a las apps colocarse ni quedarse encima: Stölk se hace estrecho y lo pones a la derecha con Super + →." : ""}</span></span></label>
         </div>
       </section>
       <section class="settings-sec">
