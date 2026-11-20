@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { notionContext } from './notion.js';
 import type { DB } from './db.js';
 import type { EnvFile } from './env.js';
 import { HttpError } from './http.js';
 import { todayIso } from './util.js';
-import { notionContext } from './notion.js';
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
