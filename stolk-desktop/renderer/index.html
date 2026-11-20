@@ -195,7 +195,15 @@ details > summary { cursor: pointer; }
 .msg.me .bubble { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .msg .bubble.err { border-color: var(--line-strong); }
 .msg .answer { font-size: 15px; }
-.msg .cites { margin-top: 10px; }
+.msg .cites { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.draft-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.link { border: 0; background: none; padding: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.link:hover { color: var(--ink); }
+details.more { position: relative; }
+details.more > summary { list-style: none; }
+details.more > summary::-webkit-details-marker { display: none; }
+.more-menu { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; display: grid; gap: 4px; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.more-menu .btn { justify-content: flex-start; border-color: transparent; }
 .msg .cites .tag { cursor: pointer; font: inherit; font-size: 12.5px; }
 .draft-box { margin-top: 12px; white-space: normal; }
 .draft-box textarea { min-height: 130px; }
@@ -998,9 +1006,10 @@ window.stolkO = (() => {
       return `<div class="msg"><div class="bubble">
           ${m.text ? `<div class="answer">${esc(m.text)}</div>` : ''}
           ${dc ? (idx === lastDraft ? `<div class="form draft-box" id="askDraft" data-cid="${dc.id}">
-              <div class="field"><label for="askDraftText">Mensaje para ${esc(dc.name)}: edítalo antes de enviar</label><textarea id="askDraftText">${esc(m.draft.text)}</textarea></div>
-              ${sendButtons(dc, m.draft.text, 'Hola', false, m.draft.channel)}</div>` : `<div class="draft-old"><b>Mensaje para ${esc(dc.name)}</b><br>${esc(m.draft.text)}</div>`) : ''}
-          ${m.cites?.length ? `<div class="actions cites">${m.cites.map((c) => `<button type="button" class="btn small" data-action="${c.action}" data-id="${c.id}">${esc(c.label)}</button>`).join('')}</div>` : ''}
+              <div class="field"><div class="draft-head"><label for="askDraftText">Mensaje para ${esc(dc.name)}</label><button type="button" class="link" data-action="open-contact" data-id="${dc.id}">Ver ficha</button></div><textarea id="askDraftText">${esc(m.draft.text)}</textarea></div>
+              ${sendButtons(dc, m.draft.text, 'Hola', false, m.draft.channel, true)}</div>` : `<div class="draft-old"><b>Mensaje para ${esc(dc.name)}</b><br>${esc(m.draft.text)}</div>`) : ''}
+          ${(() => { const cs = (m.cites || []).filter((c) => !(dc && c.action === 'open-contact' && c.id === dc.id));
+            return cs.length ? `<div class="cites">${cs.map((c) => `<button type="button" class="btn small" data-action="${c.action}" data-id="${c.id}">${esc(c.label)}</button>`).join('')}</div>` : ''; })()}
         </div></div>`;
     }).join('');
     return `
@@ -1414,7 +1423,8 @@ window.stolkO = (() => {
     ? `https://web.whatsapp.com/send?phone=${digits}${text !== undefined ? `&text=${encodeURIComponent(text)}` : ''}`
     : `https://wa.me/${digits}${text !== undefined ? `?text=${encodeURIComponent(text)}` : ''}`;
   // channel (from Preguntar) puts that app first, as the main button, named after the person.
-  function sendButtons(c, text, subject, withEdit, channel) {
+  // compact (Preguntar): main app + Copiar, the other apps under "Más", no note.
+  function sendButtons(c, text, subject, withEdit, channel, compact) {
     const digits = (c.phone || '').replace(/\D/g, '');
     const enc = encodeURIComponent;
     const first = esc(c.name.split(' ')[0]);
@@ -1424,7 +1434,12 @@ window.stolkO = (() => {
     if (c.email) b.push({ ch: 'email', html: (cls, main) => `<a class="btn${cls}" href="https://mail.google.com/mail/?view=cm&fs=1&to=${enc(c.email)}&su=${enc(subject)}&body=${enc(text)}" target="_blank" rel="noopener" data-sent="Gmail">${main ? `Abrir Gmail para ${first}` : 'Gmail'}</a>` });
     if (c.linkedin) b.push({ ch: 'linkedin', html: (cls, main) => `<a class="btn${cls}" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener" data-sent="LinkedIn" data-copy-first>${main ? `Copiar y abrir LinkedIn de ${first}` : 'LinkedIn (copia y abre perfil)'}</a>` });
     const main = b.find((x) => x.ch === channel) || (channel ? null : b.find((x) => x.ch === 'whatsapp'));
-    const html = [...(main ? [main.html(' primary', !!channel)] : []), ...b.filter((x) => x !== main).map((x) => x.html('', false))];
+    const rest = b.filter((x) => x !== main).map((x) => x.html('', false));
+    if (compact) {
+      return `<div class="actions">${main ? main.html(' primary', !!channel) : ''}<button type="button" class="btn" data-copy-text>Copiar</button>${rest.length
+        ? `<details class="more"><summary class="btn ghost">Más ▾</summary><div class="more-menu">${rest.join('')}</div></details>` : ''}</div>`;
+    }
+    const html = [...(main ? [main.html(' primary', !!channel)] : []), ...rest];
     html.push('<button type="button" class="btn" data-copy-text>Copiar</button>');
     if (withEdit) html.push('<button type="button" class="btn" data-edit-text>Editar con Claude</button><button type="button" class="btn ghost" data-undo-edit hidden>Deshacer</button>');
     return `<div class="actions">${html.join('')}</div><p class="note" style="margin:0">Se abre la app con el mensaje escrito. Tú pulsas Enviar.</p>`;
