@@ -3,7 +3,7 @@ window.Api = (() => {
   async function call(method, route, body) {
     if (!window.stolk?.call) throw new Error('Sin conexión con el servidor local');
     const res = await window.stolk.call(method, route, body);
-    if (res.status >= 400) throw new Error(res.body?.error?.message || `Error ${res.status}`);
+    if (res.status >= 400) throw Object.assign(new Error(res.body?.error?.message || `Error ${res.status}`), { status: res.status, body: res.body });
     return res.body;
   }
   return {

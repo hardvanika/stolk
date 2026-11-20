@@ -57,10 +57,8 @@ main:focus, main:focus-visible { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 :root { --topbar: 64px; }
 .topbar { position: sticky; top: 0; z-index: 30; height: var(--topbar); display: flex; align-items: center; justify-content: center; background: var(--rail); border-bottom: 1px solid var(--line); }
-.topbar .logo { width: 92px; display: block; }
+.topbar .logo { width: 92px; display: block; overflow: visible; color: var(--rail-ink); --m-bg: var(--rail); }
 .topbar .logo .stroke { stroke: var(--rail-ink); }
-.topbar .logo .eye { fill: var(--rail-ink); }
-.topbar .logo .glint { fill: var(--rail); }
 .app { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100%; }
 .rail { background: var(--rail); color: var(--rail-ink); border-right: 1px solid var(--line); padding-block: 22px; padding-inline: 12px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: var(--topbar); height: calc(100vh - var(--topbar)); }
 .rail .logo { width: 84px; margin-left: 10px; display: block; }
@@ -74,7 +72,7 @@ main:focus, main:focus-visible { outline: none; }
 .nav .dot { display: none; }
 .ev-link { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--ink); text-underline-offset: 3px; overflow-wrap: anywhere; }
 .nav-sep { display: block; height: 1px; background: var(--line); margin: 10px 10px; }
-.logo .glint { transition: transform .15s ease-out; }
+.logo .m-look { transition: transform .15s ease-out; }
 .nav .ico { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav .count { margin-left: auto; font-size: 12px; color: var(--rail-muted); font-variant-numeric: tabular-nums; }
 .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; }
@@ -370,13 +368,14 @@ details > summary { cursor: pointer; }
       <g class="stroke" fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
         <path d="M38 72C32 64 10 64 10 78C10 92 40 88 40 103C40 118 12 118 6 108"/>
         <path transform="translate(6 0)" d="M62 30L62 102C62 111 67 113 76 113M50 67L76 67"/>
-        <circle transform="translate(13 0)" cx="110" cy="90" r="23"/>
         <path transform="translate(14 0)" d="M152 20L152 113"/>
         <path transform="translate(8 0)" d="M180 20L180 113M212 64L183 93M195 82L215 113"/>
       </g>
-      <g transform="translate(13 0)">
-        <circle class="eye" cx="98" cy="44" r="9"/><circle class="eye" cx="122" cy="44" r="9"/>
-        <g><animateTransform class="spin" attributeName="transform" type="rotate" from="0 98 44" to="360 98 44" dur="2.4s" repeatCount="indefinite"/><circle class="glint" data-cx="98" cx="100.5" cy="41.5" r="4.4"/></g><g><animateTransform class="spin" attributeName="transform" type="rotate" from="0 122 44" to="360 122 44" dur="2.4s" repeatCount="indefinite"/><circle class="glint" data-cx="122" cx="124.5" cy="41.5" r="4.4"/></g>
+      <!-- The ö is the mascot (mascot.js). This static copy shows until it mounts. -->
+      <g id="logoO" transform="translate(13 0)">
+        <circle cx="110" cy="90" r="23" fill="none" stroke="currentColor" stroke-width="14"/>
+        <circle cx="98" cy="44" r="9" fill="currentColor"/><circle cx="122" cy="44" r="9" fill="currentColor"/>
+        <circle cx="100.5" cy="41.5" r="4.4" fill="var(--rail)"/><circle cx="124.5" cy="41.5" r="4.4" fill="var(--rail)"/>
       </g>
     </svg>
   </a>
@@ -392,15 +391,22 @@ details > summary { cursor: pointer; }
 <div id="toastRoot"></div>
 
 <script src="api.js"></script>
+<script src="mascot.js"></script>
 <script>
 (function(){const modes=['claro','oscuro','sistema'];let i=0;try{i=Math.max(0,modes.indexOf(localStorage.getItem('stolk-theme2')||'claro'))}catch(e){}
 function apply(){const m=modes[i];if(m==='sistema')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m==='oscuro'?'dark':'light');const b=document.getElementById('themeBtn');if(b)b.textContent='Tema: '+m;try{localStorage.setItem('stolk-theme2',m)}catch(e){}}
 window.stolkTheme={get:()=>modes[i],set:(m)=>{i=Math.max(0,modes.indexOf(m));apply();}};apply();})();
-/* Eyes follow the cursor: each glint slides inside its eye toward the pointer, back to rest when the pointer leaves. */
-(function(){if(matchMedia('(prefers-reduced-motion: reduce)').matches){document.querySelectorAll('.logo .spin').forEach((a)=>a.remove());return;}let raf=0,px=0,py=0;
-function move(){raf=0;document.querySelectorAll('.logo').forEach(svg=>{const m=svg.getScreenCTM();if(!m)return;svg.querySelectorAll('.glint').forEach(g=>{const cx=+g.dataset.cx+13,cy=44;const sx=m.a*cx+m.c*cy+m.e,sy=m.b*cx+m.d*cy+m.f;const dx=px-sx,dy=py-sy,d=Math.hypot(dx,dy)||1;const k=Math.min(4.2,d/12);const ox=dx/d*k-2.5,oy=dy/d*k+2.5;g.style.transform=`translate(${ox}px,${oy}px)`;});});}
-document.addEventListener('pointermove',e=>{px=e.clientX;py=e.clientY;if(!raf)raf=requestAnimationFrame(move);});
-document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .glint').forEach(g=>g.style.transform=''));})();
+/* The ö mascot: eyes follow the cursor and blink; it hops, thinks and reacts in Preguntar; sleeps after 3 minutes idle. */
+window.stolkO = (() => {
+  const g = document.getElementById('logoO');
+  if (!window.StolkMascot || !g) return { set() {}, play: async () => {}, ping() {}, state: 'idle' };
+  const o = StolkMascot.mount(g, { drop: 80 });
+  let idleT = 0;
+  const wake = () => { if (o.state === 'sleep') o.set('idle'); clearTimeout(idleT); idleT = setTimeout(() => { if (o.state === 'idle') o.set('sleep'); }, 180000); };
+  ['pointermove', 'keydown', 'pointerdown', 'focus'].forEach((t) => window.addEventListener(t, wake, { passive: true }));
+  wake();
+  return o;
+})();
 
 (async () => {
   const TODAY = new Date();
@@ -468,8 +474,8 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   }
   // Runs an action against the server, reloads what it touched, re-renders, and reports errors as a toast.
   async function act(fn, reload = [], okMsg) {
-    try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) toast(okMsg); return true; }
-    catch (err) { toast(err.message || 'Algo ha fallado'); return false; }
+    try { await fn(); if (reload.length) await load(...reload); render(); if (okMsg) { toast(okMsg); stolkO.play('celebrate'); } return true; }
+    catch (err) { toast(err.message || 'Algo ha fallado'); stolkO.play('error'); return false; }
   }
 
   // Cal.com, Google Calendar and Gmail: at startup, every 15 minutes and from "Sincronizar".
@@ -863,12 +869,18 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, badge: 'Pr' }; }
     return null;
   }).filter(Boolean);
+  // Claude tags each answer with an emotion; the ö acts it out. A draft with no emotion gets a wink.
+  const ASK_EMOTIONS = ['happy', 'thanks', 'eyeroll', 'wink', 'surprised', 'sad', 'celebrate', 'angry'];
+  const askEmotion = (r) => (ASK_EMOTIONS.includes(r.emotion) ? r.emotion : r.draft ? 'wink' : null);
   async function claudeAsk(q) {
+    let mood = null;
     const files = state.askFiles.splice(0);
     const history = state.chat.filter((m) => !m.error && m.text).slice(-20).map((m) => ({ role: m.role, text: m.text }));
     state.chat.push({ role: 'user', text: q, files: files.map((f) => ({ name: f.name, mediaType: f.mediaType, url: f.url })) });
     state.askLoading = true;
     render();
+    stolkO.set('idle');
+    stolkO.play('hop').then(() => { if (state.askLoading) stolkO.set('think'); });
     const body = { question: q };
     if (history.length && !state.askBasic) body.history = history;
     if (files.length) body.attachments = files.map((f) => ({ name: f.name, mediaType: f.mediaType, data: f.data }));
@@ -881,12 +893,16 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
         state.askBasic = true; delete body.history; r = await Api.post('/ask', body);
       }
       state.chat.push({ role: 'assistant', text: r.answer || '', cites: askCites(r), draft: r.draft || null });
+      mood = askEmotion(r);
     } catch (err) {
       const msg = /unknown field: attachments/i.test(err.message) ? 'Tu servidor de Stölk aún no acepta archivos. Actualiza Stölk y vuelve a probar.' : err.message;
       state.chat.push({ role: 'assistant', error: msg });
+      mood = err.body?.emotion === 'angry' || err.body?.error?.emotion === 'angry' ? 'angry' : 'error';
     }
     state.askLoading = false;
     render();
+    stolkO.set('idle');
+    if (mood) stolkO.play(mood);
   }
   function readAskFile(file) {
     return new Promise((resolve, reject) => {
@@ -1062,6 +1078,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
   const CARD_FIELDS = [['name', 'Nombre'], ['role', 'Cargo'], ['company', 'Empresa'], ['email', 'Email'], ['phone', 'Teléfono'], ['linkedin', 'LinkedIn'], ['web', 'Web']];
   async function onCapture(r) {
     state.capture = { ...(state.capture || {}), ...r };
+    stolkO.set(r.status === 'reading' ? 'think' : 'idle');
+    if (r.status === 'ok') stolkO.play(r.card?.found === false ? 'sad' : 'happy');
+    if (r.status === 'error') stolkO.play('error');
     if (r.status === 'ok') {
       const q = new URLSearchParams(Object.entries({ email: r.card.email, phone: r.card.phone, name: r.card.name }).filter(([, v]) => v)).toString();
       try { state.capture.matches = q ? await Api.get(`/contacts/match?${q}`) : []; } catch { state.capture.matches = []; }
@@ -1551,6 +1570,9 @@ document.addEventListener('pointerleave',()=>document.querySelectorAll('.logo .g
     if (q || state.askFiles.length) claudeAsk(q || 'Mira lo que te adjunto.');
   });
 
+  // While Ivan types in Preguntar the ö looks down at the box and nods with each key.
+  document.addEventListener('input', (e) => { if (e.target.id !== 'askInput' || state.askLoading) return; stolkO.set(e.target.value.trim() ? 'listen' : 'idle'); stolkO.ping(); });
+  document.addEventListener('focusout', (e) => { if (e.target.id === 'askInput' && stolkO.state === 'listen') stolkO.set('idle'); });
   document.addEventListener('click', (e) => { const x = e.target.closest('[data-remove-file]'); if (x) { state.askFiles.splice(Number(x.dataset.removeFile), 1); renderComposerFiles(); } });
   window.stolk?.onCapture?.((r) => onCapture(r));
   // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.
