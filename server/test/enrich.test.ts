@@ -11,7 +11,7 @@ import { buildRouter } from '../src/app.js';
 import { createApiServer } from '../src/http.js';
 import { seedDemo } from '../src/seed.js';
 import type { CreateMessage } from '../src/ask.js';
-import { personBrief, normLinkedin } from '../src/enrich.js';
+import { personBrief, normLinkedin, enrich, webTools } from '../src/enrich.js';
 
 const TOKEN = 't';
 let server: Server, base: string, db: DB;
@@ -99,8 +99,9 @@ test('searches with web search, keeps only sourced facts and saves them as sugge
   // The request: web search capped, our strict tool, fallbacks on, and only professional fields sent.
   const p = calls[0];
   assert.deepEqual(p.tools[0], { type: 'web_search_20260209', name: 'web_search', max_uses: 5 });
-  assert.equal(p.tools[1].name, 'guardar_resultado');
-  assert.equal(p.tools[1].strict, true);
+  assert.deepEqual(p.tools[1], { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 4 });
+  assert.equal(p.tools[2].name, 'guardar_resultado');
+  assert.equal(p.tools[2].strict, true);
   assert.equal(p.fallbacks, 'default');
   const sent = JSON.stringify(p.messages);
   assert.match(sent, /Marta Ruiz/);
@@ -152,4 +153,22 @@ test('person brief leaves out free-mail domains; LinkedIn URLs are normalised', 
   assert.deepEqual(personBrief({ name: 'A', email: 'a@gmail.com', phone: '1', notes: 'x' }), { nombre: 'A' });
   assert.equal(normLinkedin('https://es.linkedin.com/in/foo-bar?x=1'), 'linkedin.com/in/foo-bar');
   assert.equal(normLinkedin('https://linkedin.com/company/acme'), null);
+});
+
+test('a lookup that takes too long ends with a clear timeout', async () => {
+  const contact = { id: 999, name: 'Lento Pérez' };
+  const slow: CreateMessage = () => new Promise(() => {});
+  await assert.rejects(enrich(db, new EnvFile(join(tmpdir(), 'none.env')), contact, { create: slow, deadlineMs: 30 }),
+    (e: any) => e.status === 504 && /tardado demasiado/.test(e.message));
+});
+
+test('Haiku gets the basic web tools; failed searches give a clear error', async () => {
+  assert.deepEqual(webTools('claude-haiku-5-5').map((t) => t.type), ['web_search_20250305', 'web_fetch_20250910']);
+  assert.deepEqual(webTools('claude-sonnet-5-5').map((t) => t.type), ['web_search_20260209', 'web_fetch_20260209']);
+  const failing: CreateMessage = async () => msg([
+    { type: 'web_search_tool_result', tool_use_id: 's1', content: { type: 'web_search_tool_result_error', error_code: 'invalid_tool_input' } },
+    save({ confidence: 'baja', summary: 'Nada', suggestions: [], news: [], sources: [] }),
+  ]);
+  await assert.rejects(enrich(db, new EnvFile(join(tmpdir(), 'none.env')), { id: 998, name: 'Error Pérez' }, { create: failing, model: 'claude-haiku-5-5' }),
+    (e: any) => e.status === 502 && /invalid_tool_input/.test(e.message));
 });

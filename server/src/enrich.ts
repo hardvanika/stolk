@@ -33,6 +33,9 @@ export interface Enrichment {
 }
 
 export const MAX_SEARCHES = 5;
+export const MAX_FETCHES = 4;
+/** Longest Ivan waits on "Buscando…" before a clear error, across every request of one lookup. */
+export const DEADLINE_MS = 150_000;
 
 // List prices per million tokens (input, output) and per search, used only to show an estimate.
 const PRICES: Record<string, [number, number]> = {
@@ -55,7 +58,8 @@ Qué buscar, y nada más:
 Nunca busques ni devuelvas: dirección, teléfono, email personal, familia, pareja, salud, religión, ideas políticas, vida privada, fotos, datos de menores ni cuentas personales. Si un resultado trae algo así, ignóralo.
 
 Reglas:
-- Haz pocas búsquedas y concretas (nombre + empresa, nombre + cargo). Como mucho ${MAX_SEARCHES}.
+- Haz pocas búsquedas y concretas (nombre + empresa, nombre + cargo). Como mucho ${MAX_SEARCHES}. Prueba también páginas de comunidades y eventos de su sector donde suelen salir perfiles y ponentes (por ejemplo, en tecnología: AWS Community Builders o Heroes, AWS User Groups, ponentes de meetups y conferencias).
+- Puedes abrir páginas con web_fetch (como mucho ${MAX_FETCHES}): su web si Ivan la tiene, y las páginas más prometedoras de los resultados. LinkedIn no deja leer sus perfiles: no lo abras.
 - Antes de dar un dato, comprueba que es la misma persona (nombre, empresa, sector, ciudad o lo que Ivan ya sabe). Si hay varias personas con ese nombre y no puedes distinguirlas, pon confidence "baja", deja suggestions vacío y explícalo en summary.
 - Cada sugerencia y cada noticia lleva la URL exacta del resultado del que sale. No inventes URLs.
 - Sugiere un campo solo si es nuevo o distinto de lo que Ivan ya tiene.
@@ -109,7 +113,8 @@ export function personBrief(c: any): Record<string, string> {
   const out: Record<string, string> = { nombre: c.name };
   if (c.role) out.cargo = c.role;
   if (c.company) out.empresa = c.company;
-  if (c.web) out.web = c.web;
+  // web_fetch only opens URLs already in the conversation, written out in full.
+  if (c.web) out.web = /^https?:\/\//i.test(c.web) ? c.web : `https://${String(c.web).trim()}`;
   if (c.linkedin) out.linkedin = c.linkedin;
   const domain = String(c.email || '').split('@')[1]?.toLowerCase().trim();
   if (domain && !FREE_MAIL.has(domain)) out.dominio_email = domain;
@@ -187,16 +192,33 @@ export function applySuggestions(db: DB, cid: number, fields: string[]): Enrichm
   return e;
 }
 
+// The dynamic-filtering web tools (_20260209) run only on Opus and Sonnet; Haiku gets the basic ones.
+export function webTools(model: string): any[] {
+  return /haiku/.test(model)
+    ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: MAX_SEARCHES }, { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: MAX_FETCHES }]
+    : [{ type: 'web_search_20260209', name: 'web_search', max_uses: MAX_SEARCHES }, { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: MAX_FETCHES }];
+}
+
+const timeoutError = () => new HttpError(504, 'claude_timeout', 'La búsqueda ha tardado demasiado (más de 2 minutos). Prueba otra vez en un rato.');
+
+function withDeadline<T>(work: Promise<T>, deadline: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(timeoutError()), Math.max(0, deadline - Date.now())); });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
+}
+
 export async function enrich(
   db: DB, env: EnvFile, contact: any,
-  opts: { now?: Date; model?: string; create?: CreateMessage } = {},
+  opts: { now?: Date; model?: string; create?: CreateMessage; deadlineMs?: number } = {},
 ): Promise<Enrichment> {
+  const deadline = Date.now() + (opts.deadlineMs ?? DEADLINE_MS);
   const model = opts.model || DEFAULT_MODEL;
   let create = opts.create;
   if (!create) {
     const key = env.get('ANTHROPIC_API_KEY');
     if (!key) throw new HttpError(409, 'claude_not_connected', 'Conecta Claude en Ajustes para buscar información');
-    create = anthropicCreate(key);
+    // No retries: a retry after a slow search would blow the deadline anyway.
+    create = anthropicCreate(key, { timeout: opts.deadlineMs ?? DEADLINE_MS, maxRetries: 0 });
   }
   const today = (opts.now ?? new Date()).toISOString().slice(0, 10);
   const messages: Anthropic.Beta.BetaMessageParam[] = [{
@@ -205,24 +227,27 @@ export async function enrich(
   }];
 
   const seen = new Set<string>();
+  const toolErrors = new Set<string>();
   let searches = 0, cost = 0, usedModel = model;
   let result: any = null;
   // The server-side search loop can pause; resume it a couple of times, then give up.
   for (let round = 0; round < 3 && !result; round++) {
     let msg: Anthropic.Beta.BetaMessage;
     try {
-      msg = await create({
+      msg = await withDeadline(create({
         model,
         max_tokens: 16000,
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        output_config: { effort: 'medium' },
+        output_config: { effort: 'low' },
         system: SYSTEM,
-        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: MAX_SEARCHES }, TOOL],
+        tools: [...webTools(usedModel), TOOL],
         tool_choice: { type: 'auto' },
         messages,
-      });
+      }), deadline);
     } catch (e) {
+      if (e instanceof HttpError) throw e;
+      if (e instanceof Anthropic.APIConnectionTimeoutError) throw timeoutError();
       if (e instanceof Anthropic.AuthenticationError) throw new HttpError(409, 'claude_auth', 'La clave de Claude no es válida. Cámbiala en Ajustes.');
       if (e instanceof Anthropic.RateLimitError) throw new HttpError(429, 'claude_rate_limit', 'Claude está saturado ahora mismo. Prueba en un momento.');
       if (e instanceof Anthropic.BadRequestError) throw new HttpError(502, 'claude_bad_request', `Claude rechazó la petición: ${e.message}`);
@@ -240,13 +265,20 @@ export async function enrich(
     for (const b of msg.content as any[]) {
       if (b.type === 'web_search_tool_result' && Array.isArray(b.content)) {
         for (const r of b.content) if (r?.type === 'web_search_result' && typeof r.url === 'string') seen.add(normUrl(r.url));
+      } else if ((b.type === 'web_search_tool_result' || b.type === 'web_fetch_tool_result') && b.content?.error_code) {
+        toolErrors.add(String(b.content.error_code)); // server-tool errors come back as blocks, not exceptions
+      } else if (b.type === 'web_fetch_tool_result' && typeof b.content?.url === 'string') {
+        seen.add(normUrl(b.content.url));
       }
       if (b.type === 'tool_use' && b.name === TOOL.name) result = b.input;
     }
     if (msg.stop_reason === 'refusal') throw new HttpError(422, 'claude_refused', 'Claude no ha querido buscar sobre esta persona.');
-    if (result || msg.stop_reason !== 'pause_turn') break;
+    if (result) break;
     messages.push({ role: 'assistant', content: msg.content as any });
+    // Finished without saving: ask once for the tool call with what it already found.
+    if (msg.stop_reason !== 'pause_turn') messages.push({ role: 'user', content: 'Llama ahora a guardar_resultado con lo que hayas encontrado.' });
   }
+  if (!seen.size && toolErrors.size) throw new HttpError(502, 'web_search_failed', `La búsqueda web de Claude falló (${[...toolErrors].join(', ')}). Prueba otra vez en un rato.`);
   if (!result) throw new HttpError(502, 'claude_output', 'Claude no devolvió resultados. Prueba otra vez.');
 
   const clean = cleanResult(result, contact, seen);
