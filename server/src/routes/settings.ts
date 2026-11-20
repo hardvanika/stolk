@@ -11,6 +11,8 @@ const DEFAULTS = {
   theme: 'claro',
   captureShortcut: 'Ctrl+Shift+S',
   claudeModel: 'claude-opus-5-5',
+  // Ivan's Cal.com booking pages, refreshed by each sync; read-only here.
+  calLinks: [] as { title: string; minutes: number; url: string }[],
   calTypes: [
     { id: 'cafe', name: 'Café', min: 30, slug: 'cafe-30' },
     { id: 'llamada', name: 'Llamada', min: 15, slug: 'llamada-15' },

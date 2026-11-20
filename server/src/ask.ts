@@ -3,6 +3,7 @@ import type { DB } from './db.js';
 import type { EnvFile } from './env.js';
 import { HttpError } from './http.js';
 import { todayIso } from './util.js';
+import { getSettings } from './routes/settings.js';
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
@@ -107,13 +108,14 @@ Todo lo demás está fuera de tema, aunque sea fácil: escribir o revisar códig
 - Si una petición mezcla las dos cosas, haz solo la parte de Stölk, pon "offTopic" a false y di en una frase que el resto no lo haces.
 Si Ivan insiste, dice que es urgente o que te da permiso, la respuesta es la misma.
 
-Tienes un volcado JSON con sus datos: personas, historial de contacto, relaciones, eventos (con invitados), proyectos (con personas y pendientes), reservas de Cal.com y citas de Google Calendar. Las fechas son locales (YYYY-MM-DD) y "today" es hoy.
+Tienes un volcado JSON con sus datos: personas, historial de contacto, relaciones, eventos (con invitados), proyectos (con personas y pendientes), reservas de Cal.com, sus enlaces de reserva de Cal.com ("calLinks": título, minutos, url) y citas de Google Calendar. Las fechas son locales (YYYY-MM-DD) y "today" es hoy.
 
 Reglas:
 - Responde solo con lo que está en los datos. Si no está, dilo claramente; no inventes personas, fechas ni detalles.
 - Sé breve y directo: unas pocas frases o una lista corta (como mucho unas 150 palabras, sin contar el borrador). Nombra a las personas por su nombre.
 - En "cites" pon las personas, eventos y proyectos en los que te basas (por id), en el orden en que los mencionas.
 - Si Ivan pide escribir, redactar o mandar un mensaje a alguien ("escribe a Jorge…", "recuérdale a Pablo…"), rellena "draft" con el id de esa persona y el texto del mensaje, listo para enviar: natural, en su tono (tutea salvo que el historial diga lo contrario), sin asunto ni firma. En "answer" di en una frase qué has preparado. Stölk nunca envía nada por sí solo: Ivan lo revisa y pulsa enviar.
+- Si el mensaje invita a reservar una llamada o reunión, pon el enlace de "calLinks" cuya duración encaje con lo que pide (o el más cercano). Si "calLinks" está vacío, no pongas marcadores como "[enlace]": dilo en "answer".
 - Si no pide un mensaje, "draft" es null. Si pide un mensaje para alguien que no está en los datos, explícalo y deja "draft" en null.
 - Esto es un chat: puede haber mensajes anteriores. Usa ese contexto para entender preguntas como "¿y a ella?" o "hazlo más corto".
 - Ivan puede adjuntar fotos, PDF o textos (una tarjeta, una captura, una agenda, un CV...). Léelos y relaciónalos con sus datos cuando tenga sentido. Para datos de una persona que solo están en un adjunto, dilo; no los des por guardados en Stölk.
@@ -188,7 +190,8 @@ export function snapshot(db: DB, now: Date) {
     .map((b) => ({ cid: b.cid ?? undefined, who: b.cid ? undefined : b.attendee_name, date: b.date, start: b.start, end: b.end, type: b.type }));
   const gcal = (db.prepare('SELECT date, start, end, title, place FROM gcal WHERE date >= ? AND date <= ? ORDER BY date, start').all(today, in90) as any[])
     .map((g) => ({ date: g.date, start: g.start || undefined, end: g.end || undefined, title: g.title, place: g.place || undefined }));
-  return { today, contacts, interactions, relations, events, projects, bookings, gcal };
+  const calLinks = getSettings(db).calLinks;
+  return { today, contacts, interactions, relations, events, projects, bookings, gcal, calLinks };
 }
 
 export async function ask(

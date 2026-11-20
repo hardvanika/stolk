@@ -28,7 +28,7 @@ const fakeFetch = (async (input: any, init: any = {}) => {
 
   if (u.host === 'api.cal.com') {
     if (u.pathname === '/v2/me') return json({ status: 'success', data: { id: 1, username: 'ivan', email: 'ivan@me.example', name: 'Ivan', timeZone: 'Europe/Madrid' } });
-    if (u.pathname === '/v2/event-types' && method === 'GET') return json({ status: 'success', data: [{ id: 7, slug: 'cafe-30' }] });
+    if (u.pathname === '/v2/event-types' && method === 'GET') return json({ status: 'success', data: [{ id: 7, slug: 'cafe-30', title: 'Café', lengthInMinutes: 30 }, { id: 8, slug: '15min', title: 'Llamada', lengthInMinutes: 15 }, { id: 9, slug: 'privado', title: 'Privado', lengthInMinutes: 60, hidden: true }] });
     if (u.pathname === '/v2/event-types' && method === 'POST') return json({ status: 'success', data: { id: 99 } }, 201);
     if (u.pathname === '/v2/bookings' && method === 'GET') {
       return json({
@@ -125,6 +125,12 @@ test('Cal.com: bookings are imported, past ones go to history, and events get bl
   assert.deepEqual(bk.map((b: any) => [b.calUid, b.date, b.start, b.cid]), [['bk-1', '2026-11-17', '10:00', 2], ['bk-2', '2026-11-26', '16:00', null]]);
   const jorge = (await api('GET', '/contacts/2')).body;
   assert.ok(jorge.interactions.some((i: any) => i.ch === 'cal' && i.date === '2026-11-17'));
+
+  // Booking links for Preguntar: visible types only, shortest first.
+  assert.deepEqual((await api('GET', '/settings')).body.calLinks, [
+    { title: 'Llamada', minutes: 15, url: 'https://cal.com/ivan/15min' },
+    { title: 'Café', minutes: 30, url: 'https://cal.com/ivan/cafe-30' },
+  ]);
 
   // Upcoming events 101 (3 dic 19–22) and 102 (27 nov 17–20) are blocked; the hidden type was created once.
   assert.equal(body.calcom.blocks, 2);
