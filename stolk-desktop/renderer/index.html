@@ -292,6 +292,11 @@ details > summary { cursor: pointer; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; overflow-wrap: anywhere; }
 .note { font-size: 12.5px; color: var(--muted); }
+.enrich-h { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+.enrich-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.enrich-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.enrich-list a, .note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
 .slot { border: 1px solid var(--line-strong); background: transparent; border-radius: 8px; padding: 8px 0; text-align: center; cursor: pointer; font: 500 13px var(--font-ui); font-variant-numeric: tabular-nums; }
 .slot:hover { border-color: var(--ink); }
@@ -355,10 +360,19 @@ details > summary { cursor: pointer; }
   .nav-sep { width: 1px; height: 18px; margin: 0 4px; flex: none; }
 }
 @media (min-width: 761px) {
-  main.fit { height: 100vh; display: flex; flex-direction: column; padding-block: 28px 24px; }
+  /* Fixed shell: the window never scrolls. Top bar and rail stay put; only the
+     content column scrolls, and only when a view is genuinely taller than it. */
+  html, body { overflow: hidden; }
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .topbar { position: relative; flex: none; }
+  .app { flex: 1; min-height: 0; }
+  .rail { position: relative; top: 0; height: auto; min-height: 0; overflow-y: auto; }
+  main { max-width: none; padding-right: max(40px, env(safe-area-inset-right, 0px), calc(100% - 1140px)); overflow-y: auto; overscroll-behavior: contain; }
+  main.fit { display: flex; flex-direction: column; padding-block: 28px 24px; overflow: hidden; }
   main.fit .view-head { margin-bottom: 14px; }
   main.fit .month { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); }
   main.fit .month .day { min-height: 0; overflow: hidden; }
+  main.fit .chat { flex: 1; height: auto; min-height: 0; width: 100%; }
 }
 </style>
 
@@ -441,6 +455,7 @@ window.stolkO = (() => {
     blockEvents: true,
     contacts: [], events: [], interactions: [], bookings: [], gcal: [], relations: [], projects: [], today: [],
     claudeOn: false,
+    enrichOn: false, enrich: {}, enriching: null,
     shell: { shortcut: 'Ctrl+Shift+S', panel: false, hasKey: false, shortcutActive: false, wayland: false },
     capture: null,
     selectedProject: null,
@@ -466,7 +481,7 @@ window.stolkO = (() => {
       const from = iso(addDays(new Date(m.getFullYear(), m.getMonth(), 1), -7)), to = iso(addDays(new Date(m.getFullYear(), m.getMonth() + 1, 0), 14));
       jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; /* events come complete from /events; /calendar's are a slim copy */ }));
     }
-    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
+    if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.enrichOn = !!v.enrichOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
     if (want('connections')) jobs.push(Api.get('/connections').then((v) => { state.conn = v; state.calConnected = !!v.calcom?.connected; state.gcalConnected = !!v.gcal?.connected; state.gmailConnected = !!v.gmail?.connected; state.lastSync = [v.calcom?.lastSync, v.gcal?.lastSync, v.gmail?.lastSync].filter(Boolean).sort().pop() || null; state.claudeConnected = !!v.claude?.connected; }));
     if (want('claudeMcp')) jobs.push(Api.get('/integrations/claude').then((v) => { state.claudeMcp = v; }, () => { state.claudeMcp = null; }));
     if (want('shell') && window.stolk?.settings) jobs.push(window.stolk.settings().then((v) => { state.shell = v; }));
@@ -535,7 +550,7 @@ window.stolkO = (() => {
     renderNav();
     syncBadge();
     const v = current();
-    main.classList.toggle('fit', v === 'calendario');
+    main.classList.toggle('fit', v === 'calendario' || v === 'preguntar');
     main.innerHTML = ({ hoy: viewToday, contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewAsk, integraciones: viewCal })[v]();
     if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
     if (v === 'preguntar') {
@@ -552,7 +567,7 @@ window.stolkO = (() => {
       form?.addEventListener('drop', (e) => { e.preventDefault(); addAskFiles([...(e.dataTransfer?.files || [])]); });
     }
   }
-  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); main.scrollTop = 0; });
 
   const protoFlag = '';
   const tagHtml = (t) => `<span class="tag">${esc(t)}</span>`;
@@ -646,6 +661,7 @@ window.stolkO = (() => {
         </div>
         <p style="margin:14px 0 0">${esc(c.notes)}</p>
       </section>
+      ${enrichHtml(c)}
       <section class="panel panel-pad form" style="margin-top:16px" id="personSend">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>Conversaciones</h3>${chatButtons(c, true)}</div>
         <div class="field"><label for="personText">Escribir mensaje</label><textarea id="personText" placeholder="Escribe aquí y elige por dónde enviarlo…"></textarea></div>
@@ -667,6 +683,49 @@ window.stolkO = (() => {
             <div class="what">${esc(i.text)}</div>
             ${i.follow ? `<div class="followup">Seguimiento: <span class="mono ${i.follow < iso(TODAY) ? 'since stale' : ''}">${fmt(i.follow)}</span></div>` : ''}
           </li>`).join('') || '<li class="muted">Aún no hay nada registrado.</li>'}</ol>
+      </section>`;
+  }
+
+  // Buscar info pública: one web lookup per person, only on click. Suggestions change nothing until accepted.
+  const ENRICH_LABEL = { role: 'Cargo', company: 'Empresa', web: 'Web', linkedin: 'LinkedIn' };
+  const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+  const extLink = (u, text) => /^https?:\/\//i.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(text)}</a>` : esc(text);
+  async function loadEnrich(cid) {
+    state.enrich[cid] = null;
+    try { state.enrich[cid] = await Api.get(`/contacts/${cid}/enrichment`); } catch { state.enrich[cid] = null; return; }
+    if (state.selectedContact === cid && current() === 'contactos') render();
+  }
+  async function runEnrich(cid) {
+    if (state.enriching) return;
+    state.enriching = cid; render();
+    try { state.enrich[cid] = await Api.post(`/contacts/${cid}/enrich`); }
+    catch (err) { toast(err.message); }
+    finally { state.enriching = null; render(); }
+  }
+  function enrichHtml(c) {
+    if (!state.enrichOn) return '';
+    if (!(c.id in state.enrich)) loadEnrich(c.id);
+    const e = state.enrich[c.id];
+    const busy = state.enriching === c.id;
+    const btn = `<button class="btn small" data-action="enrich" data-id="${c.id}"${state.enriching ? ' disabled' : ''}>${busy ? 'Buscando…' : e ? 'Buscar de nuevo' : 'Buscar info pública'}</button>`;
+    let body;
+    if (busy) body = '<p class="note" style="margin:0">Buscando en la web su cargo, empresa y noticias. Puede tardar un minuto.</p>';
+    else if (!e) body = `<p class="note" style="margin:0">Busca en la web el cargo, la empresa y las noticias públicas de ${esc(c.name.split(' ')[0])}. Verás de dónde sale cada dato y nada cambia en su ficha hasta que lo aceptes. Cada búsqueda cuesta unos céntimos de tu clave de Claude.</p>`;
+    else {
+      const sugg = e.suggestions.map((s) => `<li class="enrich-row"><span><span class="muted">${ENRICH_LABEL[s.field]}:</span> ${esc(s.value)} <span class="note">· ${extLink(s.source, hostOf(s.source))}</span></span>${s.applied ? '<span class="tag plain">Guardado</span>' : `<button class="btn small" data-action="enrich-apply" data-id="${c.id}:${s.field}">Aceptar</button>`}</li>`).join('');
+      const news = e.news.map((n) => `<li>${extLink(n.url, n.title)}${n.date ? ` <span class="note mono">${esc(n.date)}</span>` : ''}${n.note ? `<div class="note">${esc(n.note)}</div>` : ''}</li>`).join('');
+      const srcs = e.sources.map((x) => extLink(x.url, hostOf(x.url))).join(' · ');
+      body = `
+        ${e.confidence !== 'alta' ? `<p class="note" style="margin:0 0 8px"><span class="tag plain">${e.confidence === 'baja' ? 'No está claro que sea esta persona' : 'Revisa que sea esta persona'}</span></p>` : ''}
+        ${e.summary ? `<p style="margin:0">${esc(e.summary)}</p>` : ''}
+        ${sugg ? `<h4 class="enrich-h">Sugerencias para su ficha</h4><ul class="enrich-list">${sugg}</ul>` : ''}
+        ${news ? `<h4 class="enrich-h">Noticias</h4><ul class="enrich-list">${news}</ul>` : ''}
+        ${srcs ? `<p class="note" style="margin:10px 0 0">Fuentes: ${srcs}</p>` : ''}
+        <p class="note" style="margin:10px 0 0">Buscado el ${fmt(e.createdAt.slice(0, 10))} · ${e.searches} búsquedas · unos ${e.costUsd.toFixed(2)} $ · <button class="linkish" data-action="enrich-delete" data-id="${c.id}">Borrar</button></p>`;
+    }
+    return `<section class="panel panel-pad" style="margin-top:16px" id="personEnrich">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><h3>Info pública</h3>${btn}</div>
+        ${body}
       </section>`;
   }
 
@@ -1023,6 +1082,11 @@ window.stolkO = (() => {
             <span class="note">Se guarda solo en <span class="mono">~/.stolk/.env</span> (ANTHROPIC_API_KEY).</span></div>
           <div class="field"><label for="claudeModel">Modelo</label><select id="claudeModel" style="max-width:280px">${[['claude-opus-5-5', 'Opus 5.5 (mejor respuesta)'], ['claude-sonnet-5-5', 'Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Haiku 5.5 (más rápido y barato)']].map(([v, l]) => `<option value="${v}"${state.claudeModel === v ? ' selected' : ''}>${l}</option>`).join('')}</select><span class="note">Para Preguntar. Leer capturas usa siempre Opus 5.5.</span></div>
           <div class="actions">${state.claudeOn ? '<button class="btn danger" data-action="claude-off">Apagar</button>' : '<button class="btn primary" data-action="claude-on">Activar</button>'}</div>
+          <div class="field" style="border-top:1px solid var(--line);padding-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><label style="margin:0">Buscar info pública</label><span class="tag ${state.enrichOn ? '' : 'plain'}">${state.enrichOn ? 'Activo' : 'Apagado'}</span></div>
+            <span class="note">Añade un botón en cada persona para buscar en la web su cargo, empresa y noticias públicas, con las fuentes. Solo busca cuando lo pulsas, se guarda en tu ordenador y no cambia nada hasta que lo aceptes. Usa tu clave de Claude, con unos céntimos por búsqueda.</span>
+            <div class="actions">${state.enrichOn ? '<button class="btn" data-action="enrich-off">Desactivar</button>' : '<button class="btn" data-action="enrich-on">Activar</button>'}</div>
+          </div>
         </section>
         <section class="panel panel-pad form">
           <h2>Mensajes</h2>
@@ -1484,6 +1548,11 @@ window.stolkO = (() => {
     else if (a === 'mcp-on') act(() => Api.post(`/integrations/claude/${id}`), ['claudeMcp'], id === 'desktop' ? 'Conectado. Reinicia Claude para verlo.' : 'Conectado a Claude Code');
     else if (a === 'mcp-off') act(() => Api.del(`/integrations/claude/${id}`), ['claudeMcp'], 'Desconectado');
     else if (a === 'claude-on') act(() => Api.patch('/settings', { claudeOn: true }), ['settings'], 'Claude activado');
+    else if (a === 'enrich-on') act(() => Api.patch('/settings', { enrichOn: true }), ['settings'], 'Buscar info pública activado');
+    else if (a === 'enrich-off') act(() => Api.patch('/settings', { enrichOn: false }), ['settings'], 'Buscar info pública desactivado');
+    else if (a === 'enrich') runEnrich(Number(id));
+    else if (a === 'enrich-apply') { const [cid, field] = id.split(':'); act(async () => { const r = await Api.post(`/contacts/${cid}/enrichment/apply`, { fields: [field] }); state.enrich[cid] = r.enrichment; }, ['contacts'], `${ENRICH_LABEL[field]} guardado en su ficha`); }
+    else if (a === 'enrich-delete') act(async () => { await Api.del(`/contacts/${id}/enrichment`); state.enrich[id] = null; }, [], 'Búsqueda borrada');
     else if (a === 'claude-off') act(() => Api.patch('/settings', { claudeOn: false }), ['settings'], 'Claude apagado');
     else if (a === 'save-key') { const inp = document.getElementById(`key-${id}`); const key = inp.value.trim(); if (!key) { toast('Pega la clave primero'); return; } act(async () => { await Api.put(`/connections/${id}`, { apiKey: key }); inp.value = ''; }, ['connections', 'shell'], 'Clave guardada en tu ordenador'); }
     else if (a === 'capture') { if (window.stolk?.capture) window.stolk.capture(); else toast('La captura solo funciona en la app de escritorio'); }

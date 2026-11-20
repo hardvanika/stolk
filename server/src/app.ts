@@ -13,6 +13,10 @@ import { Syncer } from './sync/index.js';
 import type { Fetch } from './sync/fetch.js';
 import { ask, parseAttachments, parseHistory, type CreateMessage } from './ask.js';
 import { getSettings } from './routes/settings.js';
+import { enrich, getEnrichment, deleteEnrichment, applySuggestions } from './enrich.js';
+import { getContact, mapContact } from './routes/contacts.js';
+import { intParam } from './util.js';
+import { AskLimiter } from './ratelimit.js';
 import { ClaudeConnect, TARGETS, type Target } from './claude-connect.js';
 
 export const VERSION = '0.1.0';
@@ -28,11 +32,14 @@ export interface AppDeps {
   createMessage?: CreateMessage;
   /** Registers Stölk with Claude desktop and Claude Code (Ajustes → Claude). Tests pass one on a temp home. */
   claude?: ClaudeConnect;
+  /** Messages-per-minute and per-day caps for Preguntar. Tests pass their own. */
+  askLimiter?: AskLimiter;
 }
 
-export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage, claude }: AppDeps): Router {
+export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage, claude, askLimiter }: AppDeps): Router {
   const r = new Router();
   const syncer = new Syncer(db, env, f, now);
+  const limiter = askLimiter ?? new AskLimiter(undefined, now);
   r.get('/health', () => ({ ok: true, version: VERSION }), { public: true });
   contactRoutes(r, db, now);
   interactionRoutes(r, db, now);
@@ -53,7 +60,36 @@ export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch,
     if (q.length > 4000) throw new HttpError(400, 'bad_request', 'La pregunta es demasiado larga');
     const s = getSettings(db);
     if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
+    // Counted only once the question is valid and about to reach Claude.
+    limiter.take();
     return ask(db, env, q, { now: now(), model: s.claudeModel, create: createMessage, history, attachments });
+  });
+
+  // Buscar info pública: one web lookup for one person, only on Ivan's click and only if he turned it on.
+  r.get('/contacts/:id/enrichment', ({ params }) => {
+    const id = intParam(params.id);
+    getContact(db, id);
+    return getEnrichment(db, id);
+  });
+  r.post('/contacts/:id/enrich', async ({ params }) => {
+    const id = intParam(params.id);
+    const c = getContact(db, id);
+    const s = getSettings(db);
+    if (!s.enrichOn) throw new HttpError(409, 'enrich_off', 'Activa «Buscar info pública» en Ajustes');
+    if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
+    return enrich(db, env, c, { now: now(), model: s.claudeModel, create: createMessage });
+  });
+  r.post('/contacts/:id/enrichment/apply', ({ params, body }) => {
+    const id = intParam(params.id);
+    getContact(db, id);
+    const fields = Array.isArray(body?.fields) ? body.fields.filter((f: unknown) => typeof f === 'string') : [];
+    const enrichment = applySuggestions(db, id, fields);
+    return { contact: mapContact(getContact(db, id)), enrichment };
+  });
+  r.delete('/contacts/:id/enrichment', ({ params }) => {
+    const id = intParam(params.id);
+    getContact(db, id);
+    deleteEnrichment(db, id);
   });
 
   // Ajustes → Claude: let Claude desktop and Claude Code save people, notes and tasks here (MCP).

@@ -2,7 +2,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { timingSafeEqual } from 'node:crypto';
 
 export class HttpError extends Error {
-  constructor(public status: number, public code: string, message: string) {
+  /** extra: more fields for the JSON error body, e.g. { emotion: 'angry' } for the O mascot. */
+  constructor(public status: number, public code: string, message: string, public extra?: Record<string, unknown>) {
     super(message);
   }
 }
@@ -143,7 +144,7 @@ export function createApiServer(router: Router, token: string): Server {
       }
       send(res, req.method === 'POST' && out !== undefined ? 201 : out === undefined ? 204 : 200, out, cors);
     } catch (e) {
-      if (e instanceof HttpError) return send(res, e.status, { error: { code: e.code, message: e.message } }, cors);
+      if (e instanceof HttpError) return send(res, e.status, { error: { ...e.extra, code: e.code, message: e.message } }, cors);
       const msg = e instanceof Error ? e.message : String(e);
       if (/constraint failed/i.test(msg)) return send(res, 409, { error: { code: 'constraint', message: msg } }, cors);
       console.error(e);

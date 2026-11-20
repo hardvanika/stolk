@@ -10,7 +10,8 @@ import { EnvFile } from '../src/env.js';
 import { buildRouter } from '../src/app.js';
 import { createApiServer } from '../src/http.js';
 import { seedDemo } from '../src/seed.js';
-import type { CreateMessage } from '../src/ask.js';
+import { MAX_ANSWER_CHARS, type CreateMessage } from '../src/ask.js';
+import { AskLimiter } from '../src/ratelimit.js';
 
 const TOKEN = 't';
 let server: Server, base: string, db: DB;
@@ -32,7 +33,7 @@ before(async () => {
   db = openDb(join(dir, 'stolk.db'));
   seedDemo(db);
   const env = new EnvFile(join(dir, '.env'));
-  server = createApiServer(buildRouter({ db, env, createMessage: fakeCreate, now: () => new Date('2026-11-19T17:30:00Z') }), TOKEN);
+  server = createApiServer(buildRouter({ db, env, createMessage: fakeCreate, now: () => new Date('2026-11-19T17:30:00Z'), askLimiter: new AskLimiter({ perMinute: 1000, perDay: 1000 }) }), TOKEN);
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   base = `http://127.0.0.1:${(server.address() as any).port}`;
 });
@@ -164,6 +165,38 @@ test('chat limits answer in Spanish', async () => {
   assert.equal((await ask('x', { history: [{ role: 'bot', text: 'x' }] })).status, 400);
 });
 
+test('guardrails: off-topic questions are refused with an angry O and no links or draft', async () => {
+  reply = () => message(JSON.stringify({
+    answer: 'Eso no es lo mío: yo llevo tus personas y tu agenda. ¿Te digo a quién te toca escribir?',
+    offTopic: true,
+    cites: [{ type: 'contact', id: 1 }],
+    draft: { cid: 2, text: 'print(1+1)' },
+  }));
+  const r = await ask('Hazme una calculadora en Python');
+  assert.equal(r.status, 201);
+  assert.equal(r.body.offTopic, true);
+  assert.equal(r.body.emotion, 'angry');
+  assert.deepEqual(r.body.cites, []);
+  assert.equal(r.body.draft, null);
+  // The prompt scopes Claude to Stölk and the schema asks for the flag.
+  assert.match(lastParams.system[0].text, /fuera de tema/);
+  assert.match(lastParams.system[0].text, /código/);
+  assert.ok(lastParams.output_config.format.schema.required.includes('offTopic'));
+  assert.ok(lastParams.max_tokens <= 8000);
+
+  reply = () => message(JSON.stringify({ answer: 'Hoy ves a Lucía.', offTopic: false, cites: [], draft: null }));
+  const ok = await ask('¿A quién veo hoy?');
+  assert.equal(ok.body.offTopic, false);
+  assert.equal(ok.body.emotion, null);
+});
+
+test('guardrails: over-long answers are clipped', async () => {
+  reply = () => message(JSON.stringify({ answer: 'Frase larga de prueba. '.repeat(400), offTopic: false, cites: [], draft: null }));
+  const r = await ask('Cuéntamelo todo');
+  assert.ok(r.body.answer.length <= MAX_ANSWER_CHARS + 2);
+  assert.match(r.body.answer, /…$/);
+});
+
 test('validation: empty question, Claude switched off, model setting', async () => {
   assert.equal((await ask('  ')).status, 400);
   const patch = (b: unknown) => fetch(base + '/settings', {
@@ -179,4 +212,46 @@ test('validation: empty question, Claude switched off, model setting', async () 
   const off = await ask('hola');
   assert.equal(off.status, 409);
   assert.equal(off.body.error.code, 'claude_off');
+});
+
+test('guardrails: messages per minute and per day are capped', async () => {
+  let t = new Date('2026-11-19T17:30:00Z').getTime();
+  const now = () => new Date(t);
+  const dir = mkdtempSync(join(tmpdir(), 'stolk-limit-'));
+  const db2 = openDb(join(dir, 'stolk.db'));
+  seedDemo(db2);
+  const srv = createApiServer(buildRouter({
+    db: db2, env: new EnvFile(join(dir, '.env')), createMessage: fakeCreate, now,
+    askLimiter: new AskLimiter({ perMinute: 2, perDay: 3 }, now),
+  }), TOKEN);
+  await new Promise<void>((ok) => srv.listen(0, '127.0.0.1', ok));
+  const url = `http://127.0.0.1:${(srv.address() as any).port}/ask`;
+  const post = async (question: string) => {
+    const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
+    return { status: res.status, body: await res.json() };
+  };
+  try {
+    reply = () => message(JSON.stringify({ answer: 'ok', offTopic: false, cites: [], draft: null }));
+    assert.equal((await post('uno')).status, 201);
+    // Invalid requests don't count.
+    assert.equal((await post('')).status, 400);
+    assert.equal((await post('dos')).status, 201);
+    const fast = await post('tres');
+    assert.equal(fast.status, 429);
+    assert.equal(fast.body.error.code, 'ask_rate_limited');
+    assert.equal(fast.body.error.emotion, 'angry');
+    assert.match(fast.body.error.message, /2 preguntas por minuto/);
+
+    t += 61_000;
+    assert.equal((await post('tres')).status, 201);
+    t += 61_000;
+    const day = await post('cuatro');
+    assert.equal(day.status, 429);
+    assert.equal(day.body.error.code, 'ask_daily_limit');
+
+    t += 86_400_000;
+    assert.equal((await post('mañana')).status, 201);
+  } finally {
+    srv.close(); db2.close();
+  }
 });
