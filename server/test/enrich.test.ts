@@ -106,7 +106,8 @@ test('searches with web search, keeps only sourced facts and saves them as sugge
   const sent = JSON.stringify(p.messages);
   assert.match(sent, /Marta Ruiz/);
   assert.match(sent, /acme\.io/);
-  assert.doesNotMatch(sent, /600 000|ciclismo|marta@/);
+  assert.doesNotMatch(sent, /600 000|marta@/);
+  assert.match(sent, /ciclismo/); // notes go as search hints
 
   // Nothing changed on the contact yet.
   const c = await call('GET', `/contacts/${cid}`);
@@ -150,7 +151,7 @@ test('deleting the lookup forgets it, and deleting the contact removes it too', 
 });
 
 test('person brief leaves out free-mail domains; LinkedIn URLs are normalised', () => {
-  assert.deepEqual(personBrief({ name: 'A', email: 'a@gmail.com', phone: '1', notes: 'x' }), { nombre: 'A' });
+  assert.deepEqual(personBrief({ name: 'A', email: 'a@gmail.com', phone: '1', notes: ' x\n y ', tags: '["UC3M"]' }), { nombre: 'A', etiquetas: 'UC3M', pistas: 'x y' });
   assert.equal(normLinkedin('https://es.linkedin.com/in/foo-bar?x=1'), 'linkedin.com/in/foo-bar');
   assert.equal(normLinkedin('https://linkedin.com/company/acme'), null);
 });
