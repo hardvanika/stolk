@@ -92,6 +92,17 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.waitForFunction(() => document.querySelector('#personEnrich')?.textContent.includes('Guardado'));
   check((await page.evaluate((id) => window.STOLK_DATA.contacts.find((c) => c.id === id).role, cid)) === 'Head of Product', `${label}: Aceptar guarda el cargo en la ficha`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: Info pública sin scroll horizontal`);
+  // Notion: pages linked to a person show on their card; you can link another and unlink.
+  await page.evaluate(() => { const j = window.STOLK_DATA.contacts.find((c) => c.name.startsWith('Jorge')); document.querySelector(`[data-action="select-contact"][data-id="${j.id}"]`)?.click(); });
+  await page.waitForFunction(() => [...document.querySelectorAll('h3')].some((h) => h.textContent === 'Notion') && document.body.textContent.includes('Quiere ver el deck'));
+  check(true, `${label}: la ficha enseña sus páginas de Notion`);
+  await page.selectOption('#notionLink', 'cccc3');
+  await page.waitForFunction(() => document.body.textContent.includes('Tech & Tapas #4: ponentes') && !document.querySelector('#notionLink'));
+  check((await page.evaluate(() => window.STOLK_CALLS)).some((c) => c === 'PUT /notion/pages/cccc3/links'), `${label}: enlazar una página de Notion llama al servidor`);
+  await page.screenshot({ path: `${out}/${label}-notion.png` });
+  await page.click('[data-action="notion-unlink"][data-id^="cccc3"]');
+  await page.waitForFunction(() => !document.body.textContent.includes('Tech & Tapas #4: ponentes ') && document.querySelector('#notionLink'));
+  check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: Notion sin scroll horizontal`);
   // People picker in Nuevo proyecto: search, add chips, remove one, submit.
   await page.evaluate(() => { location.hash = 'proyectos'; });
   await page.waitForTimeout(150);

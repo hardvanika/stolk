@@ -3,7 +3,11 @@
 (() => {
   const S = JSON.parse(JSON.stringify(window.STOLK_SAMPLE));
   S.settings = { blockEvents: true, claudeOn: true, theme: 'claro', calTypes: [], enrichOn: false, claudeModel: 'claude-opus-5-5', captureShortcut: 'Ctrl+Shift+S' };
-  S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: false }, gmail: { connected: false }, claude: { connected: true } };
+  S.connections = { calcom: { connected: true, lastSync: '18:02' }, gcal: { connected: false }, gmail: { connected: false }, claude: { connected: true }, notion: { connected: true, lastSync: '2026-11-19T18:02:00Z', pages: 2 } };
+  S.notion = [
+    { id: 'aaaa1', title: 'Jorge Sanz', url: 'https://www.notion.so/aaaa1', edited: '2026-11-18T10:00:00Z', db: 'Personas', props: { Estado: 'Caliente' }, snippet: 'Quiere ver el deck de Voltia antes del 30.', links: [{ type: 'contact', id: 2, auto: true }] },
+    { id: 'cccc3', title: 'Tech & Tapas #4: ponentes', url: 'https://www.notion.so/cccc3', edited: '2026-11-16T10:00:00Z', db: null, props: {}, snippet: 'Lucía y David confirmados.', links: [] },
+  ];
   S.claudeMcp = { desktop: { available: true, connected: false }, code: { available: true, connected: false } };
   let next = 5000;
   const today = window.STOLK_TODAY || new Date().toISOString().slice(0, 10);
@@ -44,6 +48,11 @@
     ['GET', /^\/settings$/, () => ok(S.settings)],
     ['PATCH', /^\/settings$/, (m, b) => ok(Object.assign(S.settings, b))],
     ['GET', /^\/connections$/, () => ok(S.connections)],
+    ['GET', /^\/notion\/pages\?(.*)$/, (m) => { const q = new URLSearchParams(m[1]); const [type, ref] = q.has('contact') ? ['contact', +q.get('contact')] : q.has('project') ? ['project', +q.get('project')] : []; return ok(type ? S.notion.filter((p) => p.links.some((l) => l.type === type && l.id === ref)) : S.notion); }],
+    ['GET', /^\/notion\/pages$/, () => ok(S.notion)],
+    ['PUT', /^\/notion\/pages\/(\w+)\/links$/, (m, b) => { const p = S.notion.find((x) => x.id === m[1]); p.links.push({ type: b.type, id: b.id, auto: false }); return ok(p); }],
+    ['DELETE', /^\/notion\/pages\/(\w+)\/links\/(\w+)\/(\d+)$/, (m) => { const p = S.notion.find((x) => x.id === m[1]); p.links = p.links.filter((l) => !(l.type === m[2] && l.id === +m[3])); return { status: 204, body: null }; }],
+    ['DELETE', /^\/connections\/notion$/, () => { S.connections.notion = { connected: false }; S.notion = []; return { status: 204, body: null }; }],
     ['GET', /^\/integrations\/claude$/, () => ok(S.claudeMcp)],
     ['POST', /^\/integrations\/claude\/(desktop|code)$/, (m) => { S.claudeMcp[m[1]].connected = true; return ok(S.claudeMcp); }],
     ['DELETE', /^\/integrations\/claude\/(desktop|code)$/, (m) => { S.claudeMcp[m[1]].connected = false; return ok(undefined); }],

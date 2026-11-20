@@ -158,6 +158,31 @@ const MIGRATIONS: string[] = [
     cost_usd    REAL NOT NULL DEFAULT 0
   );
   `,
+  `
+  -- Notion (read-only): pages shared with Ivan's integration, as text, and their links to people and projects.
+  CREATE TABLE notion_pages (
+    id        TEXT PRIMARY KEY,
+    title     TEXT NOT NULL DEFAULT '',
+    url       TEXT NOT NULL DEFAULT '',
+    edited    TEXT NOT NULL DEFAULT '',
+    db        TEXT NOT NULL DEFAULT '',
+    props     TEXT NOT NULL DEFAULT '{}',
+    text      TEXT NOT NULL DEFAULT '',
+    synced_at TEXT NOT NULL DEFAULT ''
+  );
+  -- removed = 1: Ivan unlinked it, so the automatic name match must not add it again.
+  CREATE TABLE notion_links (
+    page_id TEXT NOT NULL REFERENCES notion_pages(id) ON DELETE CASCADE,
+    kind    TEXT NOT NULL CHECK (kind IN ('contact','project')),
+    ref     INTEGER NOT NULL,
+    auto    INTEGER NOT NULL DEFAULT 0,
+    removed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (page_id, kind, ref)
+  );
+  CREATE INDEX notion_links_ref ON notion_links(kind, ref);
+  CREATE TRIGGER contacts_notion_links AFTER DELETE ON contacts BEGIN DELETE FROM notion_links WHERE kind = 'contact' AND ref = OLD.id; END;
+  CREATE TRIGGER projects_notion_links AFTER DELETE ON projects BEGIN DELETE FROM notion_links WHERE kind = 'project' AND ref = OLD.id; END;
+  `,
 ];
 
 export function openDb(path: string): DB {

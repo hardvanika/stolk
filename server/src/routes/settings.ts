@@ -2,6 +2,7 @@ import type { DB } from '../db.js';
 import { Router, HttpError, bad } from '../http.js';
 import type { EnvFile, SecretKey } from '../env.js';
 import { validate, type Spec } from '../util.js';
+import { clearNotion } from '../notion.js';
 
 const DEFAULTS = {
   blockEvents: true,
@@ -42,6 +43,8 @@ const CONNECTIONS: Record<string, { keys: SecretKey[]; put?: SecretKey }> = {
   gcal: { keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'] },
   // Same Google sign-in as gcal; shown separately so its own sync state is visible.
   gmail: { keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'] },
+  // Internal integration token (read-only use). Ivan picks the pages to share in Notion.
+  notion: { keys: ['NOTION_TOKEN'], put: 'NOTION_TOKEN' },
 };
 
 export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
@@ -73,6 +76,7 @@ export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
         out[name].lastSync = s?.last_sync ?? null;
         if (s && !s.ok) out[name].error = s.message;
       }
+      if (name === 'notion') out[name].pages = (db.prepare('SELECT COUNT(*) AS n FROM notion_pages').get() as any).n;
     }
     return out;
   });
@@ -94,5 +98,7 @@ export function settingsRoutes(r: Router, db: DB, env: EnvFile) {
     const drop = google ? (['GOOGLE_REFRESH_TOKEN'] as SecretKey[]) : c.keys;
     env.set(Object.fromEntries(drop.map((k) => [k, null])));
     db.prepare('DELETE FROM sync_state WHERE name IN (?, ?)').run(google ? 'gcal' : params.name, google ? 'gmail' : params.name);
+    // What was read from Notion goes with the token.
+    if (params.name === 'notion') clearNotion(db);
   });
 }

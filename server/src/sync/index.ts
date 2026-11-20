@@ -6,12 +6,15 @@ import { getSettings } from '../routes/settings.js';
 import { CalcomClient, BLOCK_SLUG, blockLength } from './calcom.js';
 import { GoogleClient, addresses } from './google.js';
 import { RemoteError, type Fetch } from './fetch.js';
+import { NotionClient } from './notion.js';
+import { syncNotion } from '../notion.js';
 
 export interface SyncResult {
   lastSync: string;
   calcom: { ok: boolean; skipped?: string; bookings?: number; blocks?: number; error?: string };
   gcal: { ok: boolean; skipped?: string; events?: number; error?: string };
   gmail: { ok: boolean; skipped?: string; emails?: number; error?: string };
+  notion: { ok: boolean; skipped?: string; pages?: number; error?: string };
 }
 
 const DAY = 86_400_000;
@@ -26,7 +29,11 @@ const FUTURE_DAYS = 120;
 export class Syncer {
   private running: Promise<SyncResult> | null = null;
 
-  constructor(private db: DB, private env: EnvFile, private f: Fetch = fetch, private now: () => Date = () => new Date()) {}
+  constructor(
+    private db: DB, private env: EnvFile, private f: Fetch = fetch, private now: () => Date = () => new Date(),
+    /** Gap between Notion requests (its limit is ~3/s). Tests pass 0. */
+    private notionPauseMs = 340,
+  ) {}
 
   private state(name: string, ok: boolean, message: string | null) {
     this.db.prepare(`INSERT INTO sync_state (name, last_sync, ok, message) VALUES (?, ?, ?, ?)
@@ -52,7 +59,7 @@ export class Syncer {
   }
 
   private async doSync(): Promise<SyncResult> {
-    const out: SyncResult = { lastSync: this.now().toISOString(), calcom: { ok: true }, gcal: { ok: true }, gmail: { ok: true } };
+    const out: SyncResult = { lastSync: this.now().toISOString(), calcom: { ok: true }, gcal: { ok: true }, gmail: { ok: true }, notion: { ok: true } };
     const g = this.google();
 
     const cal = this.calcom();
@@ -86,6 +93,19 @@ export class Syncer {
       } catch (e) {
         out.gmail = { ok: false, error: (e as Error).message };
         this.state('gmail', false, (e as Error).message);
+      }
+    }
+
+    const notionToken = this.env.get('NOTION_TOKEN');
+    if (!notionToken) out.notion = { ok: true, skipped: 'not connected' };
+    else {
+      try {
+        out.notion = { ok: true, pages: await syncNotion(this.db, new NotionClient(notionToken, this.f, this.notionPauseMs), this.now().toISOString()) };
+        this.state('notion', true, null);
+      } catch (e) {
+        const msg = e instanceof RemoteError && e.status === 401 ? 'Notion: la clave no es válida o se revocó' : (e as Error).message;
+        out.notion = { ok: false, error: msg };
+        this.state('notion', false, msg);
       }
     }
     return out;

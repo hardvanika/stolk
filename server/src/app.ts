@@ -10,6 +10,7 @@ import { calendarRoutes } from './routes/calendar.js';
 import { settingsRoutes } from './routes/settings.js';
 import { syncRoutes } from './routes/sync.js';
 import { Syncer } from './sync/index.js';
+import { notionRoutes } from './notion.js';
 import type { Fetch } from './sync/fetch.js';
 import { ask, parseAttachments, parseHistory, type CreateMessage } from './ask.js';
 import { getSettings } from './routes/settings.js';
@@ -34,11 +35,13 @@ export interface AppDeps {
   claude?: ClaudeConnect;
   /** Messages-per-minute and per-day caps for Preguntar. Tests pass their own. */
   askLimiter?: AskLimiter;
+  /** Gap between Notion requests; tests pass 0. */
+  notionPauseMs?: number;
 }
 
-export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage, claude, askLimiter }: AppDeps): Router {
+export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch, createMessage, claude, askLimiter, notionPauseMs }: AppDeps): Router {
   const r = new Router();
-  const syncer = new Syncer(db, env, f, now);
+  const syncer = new Syncer(db, env, f, now, notionPauseMs);
   const limiter = askLimiter ?? new AskLimiter(undefined, now);
   r.get('/health', () => ({ ok: true, version: VERSION }), { public: true });
   contactRoutes(r, db, now);
@@ -49,6 +52,7 @@ export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch,
   calendarRoutes(r, db, now);
   settingsRoutes(r, db, env);
   syncRoutes(r, db, env, syncer, f, now);
+  notionRoutes(r, db);
 
   // Preguntar: one Claude call with Ivan's data. Runs only when he presses Send in the app.
   r.post('/ask', async ({ body }) => {
