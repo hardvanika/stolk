@@ -1,0 +1,7 @@
+{
+  "uuid": "stolk-panel@hardvanika.github.io",
+  "name": "Stölk panel",
+  "description": "Keeps Stölk as a side panel on the right and shrinks the screen for the other windows. Installed by the Stölk app.",
+  "shell-version": ["45", "46", "47", "48", "49"],
+  "url": "https://github.com/hardvanika/stolk"
+}

@@ -1029,7 +1029,7 @@ window.stolkO = (() => {
           <div class="field"><label for="shortcutInput">Atajo</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="shortcutInput" value="${esc(state.shell.shortcut)}" style="max-width:220px"><button class="btn" data-action="save-shortcut">Guardar atajo</button><button class="btn" data-action="capture">Probar ahora</button></div>
             <span class="note">Formato de Electron, por ejemplo Ctrl+Shift+S o Super+K. Mientras esté activo, ninguna otra app recibe ese atajo (en muchas Ctrl+Shift+S es «Guardar como»). ${state.shell.wayland ? (state.shell.gnome ? 'Activo en los atajos de teclado de GNOME.' : 'Pulsa Guardar atajo para activarlo.') : state.shell.shortcutActive ? 'Activo.' : 'El sistema no deja usar este atajo; prueba otro.'}</span></div>
           ${state.shell.wayland ? `<p class="note" style="margin:0">Estás en Wayland, donde GNOME no pasa los atajos globales a las apps. Al guardar, Stölk crea el atajo en Ajustes de GNOME → Teclado → Atajos personalizados.</p>` : ''}
-          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha y encima de las demás ventanas.${state.shell.wayland ? " En Wayland, Ubuntu no deja a las apps colocarse ni quedarse encima: Stölk se hace estrecho y lo pones a la derecha con Super + →." : ""}</span></span></label>
+          <label class="toggle"><input type="checkbox" id="tPanel" ${state.shell.panel ? 'checked' : ''}><span><b>Panel lateral</b><br><span class="note">Stölk se queda estrecho a la derecha, encima de las demás ventanas, y el resto de la pantalla se ajusta al espacio que queda.${state.shell.panel && state.shell.panelExtension === 'relogin' ? ' <b>Cierra sesión y vuelve a entrar una vez</b> para que GNOME cargue la extensión del panel.' : ''}</span></span></label>
         </div>
       </section>
       <section class="settings-sec">
@@ -1629,7 +1629,7 @@ window.stolkO = (() => {
   });
   document.addEventListener('change', (e) => { if (e.target.id === 'waMode') { try { localStorage.setItem('stolk-wa', e.target.value); } catch {} render(); toast(e.target.value === 'web' ? 'WhatsApp se abrirá en el navegador' : 'WhatsApp se abrirá en la app'); } });
   document.addEventListener('change', (e) => { if (e.target.id === 'claudeModel') act(() => Api.patch('/settings', { claudeModel: e.target.value }), ['settings'], 'Modelo de Claude cambiado'); });
-  document.addEventListener('change', (e) => { if (e.target.id === 'tPanel') act(() => window.stolk.setPanel(e.target.checked), ['shell']); });
+  document.addEventListener('change', (e) => { if (e.target.id === 'tPanel') act(async () => { const ext = await window.stolk.setPanel(e.target.checked); if (ext === 'relogin') toast('Cierra sesión y vuelve a entrar una vez para activar el panel'); }, ['shell']); });
   document.addEventListener('change', (e) => { if (e.target.id === 'tBlock') act(() => Api.patch('/settings', { blockEvents: e.target.checked }), ['settings'], e.target.checked ? 'Tus eventos bloquearán Cal.com' : 'Tus eventos ya no bloquean Cal.com'); });
   document.addEventListener('submit', (e) => {
     if (e.target.id !== 'askForm') return;
