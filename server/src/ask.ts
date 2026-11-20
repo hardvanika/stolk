@@ -70,12 +70,16 @@ export const MAX_TOKENS = 6000;
 export const EMOTIONS = ['neutral', 'happy', 'thanks', 'eyeroll', 'wink', 'surprised', 'sad', 'celebrate'] as const;
 export type Emotion = Exclude<(typeof EMOTIONS)[number], 'neutral'> | 'angry';
 
+export const CHANNELS = ['linkedin', 'whatsapp', 'telegram', 'email', 'otro'] as const;
+export type Channel = (typeof CHANNELS)[number];
+
 export interface AskResult {
   answer: string;
   /** true when the question had nothing to do with Stölk and Claude declined it. */
   offTopic: boolean;
   cites: { type: 'contact' | 'event' | 'project'; id: number }[];
-  draft: { cid: number; text: string } | null;
+  /** channel: where Ivan will most likely send it; the app makes that button the main one. */
+  draft: { cid: number; text: string; channel: Channel } | null;
   /** How the ö mascot reacts to this answer; null when there is nothing special. */
   emotion: Emotion | null;
   used: { contacts: number; interactions: number; events: number; projects: number; bookings: number; gcal: number };
@@ -116,6 +120,7 @@ Reglas:
 - En "cites" pon las personas, eventos y proyectos en los que te basas (por id), en el orden en que los mencionas.
 - Si Ivan pide escribir, redactar o mandar un mensaje a alguien ("escribe a Jorge…", "recuérdale a Pablo…"), rellena "draft" con el id de esa persona y el texto del mensaje, listo para enviar: natural, en su tono (tutea salvo que el historial diga lo contrario), sin asunto ni firma. En "answer" di en una frase qué has preparado. Stölk nunca envía nada por sí solo: Ivan lo revisa y pulsa enviar.
 - Si el mensaje invita a reservar una llamada o reunión, pon el enlace de "calLinks" cuya duración encaje con lo que pide (o el más cercano). Si "calLinks" está vacío, no pongas marcadores como "[enlace]": dilo en "answer".
+- En "draft.channel" pon por dónde lo va a mandar: el que diga Ivan; si no lo dice, el canal que más usa con esa persona según el historial; si no hay historial, "linkedin" si tiene LinkedIn, si no "whatsapp" si tiene teléfono, si no "email". "otro" si no hay ninguno.
 - Si no pide un mensaje, "draft" es null. Si pide un mensaje para alguien que no está en los datos, explícalo y deja "draft" en null.
 - Esto es un chat: puede haber mensajes anteriores. Usa ese contexto para entender preguntas como "¿y a ella?" o "hazlo más corto".
 - Ivan puede adjuntar fotos, PDF o textos (una tarjeta, una captura, una agenda, un CV...). Léelos y relaciónalos con sus datos cuando tenga sentido. Para datos de una persona que solo están en un adjunto, dilo; no los des por guardados en Stölk.
@@ -146,8 +151,8 @@ const SCHEMA = {
         {
           type: 'object',
           additionalProperties: false,
-          required: ['cid', 'text'],
-          properties: { cid: { type: 'integer' }, text: { type: 'string' } },
+          required: ['cid', 'text', 'channel'],
+          properties: { cid: { type: 'integer' }, text: { type: 'string' }, channel: { type: 'string', enum: [...CHANNELS] } },
         },
         { type: 'null' },
       ],
@@ -275,7 +280,7 @@ export async function ask(
     return true;
   });
   const draft = out.draft && ids.contact.has(out.draft.cid) && typeof out.draft.text === 'string' && out.draft.text.trim()
-    ? { cid: out.draft.cid, text: out.draft.text.trim() }
+    ? { cid: out.draft.cid, text: out.draft.text.trim(), channel: (CHANNELS as readonly string[]).includes(out.draft.channel) ? out.draft.channel as Channel : 'otro' }
     : null;
   const emotion = (EMOTIONS as readonly string[]).includes(out.emotion) && out.emotion !== 'neutral' ? (out.emotion as Emotion) : null;
   return { answer, offTopic, emotion, cites, draft, used, model: msg.model };

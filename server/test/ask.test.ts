@@ -90,10 +90,10 @@ test('returns a draft for "escribe a…" and drops drafts for unknown people', a
   reply = () => message(JSON.stringify({
     answer: 'Te he preparado un mensaje para Jorge.',
     cites: [{ type: 'contact', id: 2 }],
-    draft: { cid: 2, text: '  Hola Jorge, te paso el deck actualizado de Voltia.  ' },
+    draft: { cid: 2, text: '  Hola Jorge, te paso el deck actualizado de Voltia.  ', channel: 'whatsapp' },
   }));
   const ok = await ask('Escribe a Jorge para mandarle el deck');
-  assert.deepEqual(ok.body.draft, { cid: 2, text: 'Hola Jorge, te paso el deck actualizado de Voltia.' });
+  assert.deepEqual(ok.body.draft, { cid: 2, text: 'Hola Jorge, te paso el deck actualizado de Voltia.', channel: 'whatsapp' });
 
   reply = () => message(JSON.stringify({ answer: 'x', cites: [], draft: { cid: 777, text: 'hola' } }));
   assert.equal((await ask('Escribe a nadie')).body.draft, null);

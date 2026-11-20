@@ -923,9 +923,9 @@ window.stolkO = (() => {
   // ---------- Preguntar: a chat with Claude through the local server (/ask) ----------
   const ASK_MAX_FILES = 5, ASK_MAX_BYTES = 10 * 1024 * 1024;
   const askCites = (r) => (r.cites || []).map((x) => {
-    if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, badge: initials(c.name) }; }
-    if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, badge: 'Ev' }; }
-    if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, badge: 'Pr' }; }
+    if (x.type === 'contact') { const c = byId(x.id); return c && { action: 'open-contact', id: c.id, title: c.name, label: `Abrir ficha de ${c.name}`, badge: initials(c.name) }; }
+    if (x.type === 'event') { const e = state.events.find((v) => v.id === x.id); return e && { action: 'open-event', id: e.id, title: e.title, label: `Abrir evento: ${e.title}`, badge: 'Ev' }; }
+    if (x.type === 'project') { const p = state.projects.find((v) => v.id === x.id); return p && { action: 'open-project', id: p.id, title: p.title, label: `Abrir proyecto: ${p.title}`, badge: 'Pr' }; }
     return null;
   }).filter(Boolean);
   // Claude tags each answer with an emotion; the ö acts it out. A draft with no emotion gets a wink.
@@ -999,8 +999,8 @@ window.stolkO = (() => {
           ${m.text ? `<div class="answer">${esc(m.text)}</div>` : ''}
           ${dc ? (idx === lastDraft ? `<div class="form draft-box" id="askDraft" data-cid="${dc.id}">
               <div class="field"><label for="askDraftText">Mensaje para ${esc(dc.name)}: edítalo antes de enviar</label><textarea id="askDraftText">${esc(m.draft.text)}</textarea></div>
-              ${sendButtons(dc, m.draft.text, 'Hola')}</div>` : `<div class="draft-old"><b>Mensaje para ${esc(dc.name)}</b><br>${esc(m.draft.text)}</div>`) : ''}
-          ${m.cites?.length ? `<div class="tags cites">${m.cites.map((c) => `<button type="button" class="tag" data-action="${c.action}" data-id="${c.id}">${esc(c.title)}</button>`).join('')}</div>` : ''}
+              ${sendButtons(dc, m.draft.text, 'Hola', false, m.draft.channel)}</div>` : `<div class="draft-old"><b>Mensaje para ${esc(dc.name)}</b><br>${esc(m.draft.text)}</div>`) : ''}
+          ${m.cites?.length ? `<div class="actions cites">${m.cites.map((c) => `<button type="button" class="btn small" data-action="${c.action}" data-id="${c.id}">${esc(c.label)}</button>`).join('')}</div>` : ''}
         </div></div>`;
     }).join('');
     return `
@@ -1413,17 +1413,21 @@ window.stolkO = (() => {
   const waLink = (digits, text) => waMode() === 'web'
     ? `https://web.whatsapp.com/send?phone=${digits}${text !== undefined ? `&text=${encodeURIComponent(text)}` : ''}`
     : `https://wa.me/${digits}${text !== undefined ? `?text=${encodeURIComponent(text)}` : ''}`;
-  function sendButtons(c, text, subject, withEdit) {
+  // channel (from Preguntar) puts that app first, as the main button, named after the person.
+  function sendButtons(c, text, subject, withEdit, channel) {
     const digits = (c.phone || '').replace(/\D/g, '');
     const enc = encodeURIComponent;
+    const first = esc(c.name.split(' ')[0]);
     const b = [];
-    if (digits) b.push(`<a class="btn primary" href="${waLink(digits, text)}" target="_blank" rel="noopener" data-sent="WhatsApp">WhatsApp</a>`);
-    if (digits) b.push(`<a class="btn" href="https://t.me/+${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="Telegram">Telegram</a>`);
-    if (c.email) b.push(`<a class="btn" href="https://mail.google.com/mail/?view=cm&fs=1&to=${enc(c.email)}&su=${enc(subject)}&body=${enc(text)}" target="_blank" rel="noopener" data-sent="Gmail">Gmail</a>`);
-    if (c.linkedin) b.push(`<a class="btn" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener" data-sent="LinkedIn" data-copy-first>LinkedIn (copia y abre perfil)</a>`);
-    b.push('<button type="button" class="btn" data-copy-text>Copiar</button>');
-    if (withEdit) b.push('<button type="button" class="btn" data-edit-text>Editar con Claude</button><button type="button" class="btn ghost" data-undo-edit hidden>Deshacer</button>');
-    return `<div class="actions">${b.join('')}</div><p class="note" style="margin:0">Se abre la app con el mensaje escrito. Tú pulsas Enviar.</p>`;
+    if (digits) b.push({ ch: 'whatsapp', html: (cls, main) => `<a class="btn${cls}" href="${waLink(digits, text)}" target="_blank" rel="noopener" data-sent="WhatsApp">${main ? `Abrir WhatsApp de ${first}` : 'WhatsApp'}</a>` });
+    if (digits) b.push({ ch: 'telegram', html: (cls, main) => `<a class="btn${cls}" href="https://t.me/+${digits}?text=${enc(text)}" target="_blank" rel="noopener" data-sent="Telegram">${main ? `Abrir Telegram de ${first}` : 'Telegram'}</a>` });
+    if (c.email) b.push({ ch: 'email', html: (cls, main) => `<a class="btn${cls}" href="https://mail.google.com/mail/?view=cm&fs=1&to=${enc(c.email)}&su=${enc(subject)}&body=${enc(text)}" target="_blank" rel="noopener" data-sent="Gmail">${main ? `Abrir Gmail para ${first}` : 'Gmail'}</a>` });
+    if (c.linkedin) b.push({ ch: 'linkedin', html: (cls, main) => `<a class="btn${cls}" href="https://www.${esc(c.linkedin)}" target="_blank" rel="noopener" data-sent="LinkedIn" data-copy-first>${main ? `Copiar y abrir LinkedIn de ${first}` : 'LinkedIn (copia y abre perfil)'}</a>` });
+    const main = b.find((x) => x.ch === channel) || (channel ? null : b.find((x) => x.ch === 'whatsapp'));
+    const html = [...(main ? [main.html(' primary', !!channel)] : []), ...b.filter((x) => x !== main).map((x) => x.html('', false))];
+    html.push('<button type="button" class="btn" data-copy-text>Copiar</button>');
+    if (withEdit) html.push('<button type="button" class="btn" data-edit-text>Editar con Claude</button><button type="button" class="btn ghost" data-undo-edit hidden>Deshacer</button>');
+    return `<div class="actions">${html.join('')}</div><p class="note" style="margin:0">Se abre la app con el mensaje escrito. Tú pulsas Enviar.</p>`;
   }
   // Claude rewrites the typed message in place (or drafts one if the box is empty). Nothing is sent.
   async function editWithClaude(btn, c, ta) {
