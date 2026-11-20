@@ -13,6 +13,9 @@ import { Syncer } from './sync/index.js';
 import type { Fetch } from './sync/fetch.js';
 import { ask, parseAttachments, parseHistory, type CreateMessage } from './ask.js';
 import { getSettings } from './routes/settings.js';
+import { enrich, getEnrichment, deleteEnrichment, applySuggestions } from './enrich.js';
+import { getContact, mapContact } from './routes/contacts.js';
+import { intParam } from './util.js';
 import { ClaudeConnect, TARGETS, type Target } from './claude-connect.js';
 
 export const VERSION = '0.1.0';
@@ -54,6 +57,33 @@ export function buildRouter({ db, env, now = () => new Date(), fetch: f = fetch,
     const s = getSettings(db);
     if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
     return ask(db, env, q, { now: now(), model: s.claudeModel, create: createMessage, history, attachments });
+  });
+
+  // Buscar info pública: one web lookup for one person, only on Ivan's click and only if he turned it on.
+  r.get('/contacts/:id/enrichment', ({ params }) => {
+    const id = intParam(params.id);
+    getContact(db, id);
+    return getEnrichment(db, id);
+  });
+  r.post('/contacts/:id/enrich', async ({ params }) => {
+    const id = intParam(params.id);
+    const c = getContact(db, id);
+    const s = getSettings(db);
+    if (!s.enrichOn) throw new HttpError(409, 'enrich_off', 'Activa «Buscar info pública» en Ajustes');
+    if (!s.claudeOn) throw new HttpError(409, 'claude_off', 'Claude está desactivado en Ajustes');
+    return enrich(db, env, c, { now: now(), model: s.claudeModel, create: createMessage });
+  });
+  r.post('/contacts/:id/enrichment/apply', ({ params, body }) => {
+    const id = intParam(params.id);
+    getContact(db, id);
+    const fields = Array.isArray(body?.fields) ? body.fields.filter((f: unknown) => typeof f === 'string') : [];
+    const enrichment = applySuggestions(db, id, fields);
+    return { contact: mapContact(getContact(db, id)), enrichment };
+  });
+  r.delete('/contacts/:id/enrichment', ({ params }) => {
+    const id = intParam(params.id);
+    getContact(db, id);
+    deleteEnrichment(db, id);
   });
 
   // Ajustes → Claude: let Claude desktop and Claude Code save people, notes and tasks here (MCP).

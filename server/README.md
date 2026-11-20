@@ -100,6 +100,10 @@ It works as a chat. Send the earlier turns as `history: [{role: "user"|"assistan
 - The data block is prompt-cached, so follow-up questions within a few minutes are cheaper.
 - Turn it off with `claudeOn: false` in Ajustes.
 
+## Buscar info pública
+
+This is for personal use, on one person at a time, and it's off until `enrichOn: true` (Ajustes → Claude). `POST /contacts/:id/enrich` asks Claude, with web search (up to 5 searches), for that person's public professional info: current role, company, company site, public profile URL and recent news. Every fact comes with its source. The results are saved in `enrichments` as suggestions, and the contact only changes through `POST /contacts/:id/enrichment/apply {fields}`. Claude gets only the name, role, company, web, LinkedIn and a work email domain. It never gets phone numbers, notes or the full email. Facts whose source didn't appear in the search results are dropped. The response includes `searches` and an approximate `costUsd`, typically 0.10 to 0.30 $ with Opus 5.5.
+
 ## Claude ("pásalo a Stölk")
 
 `dist/mcp.js` is an MCP server on stdio. Claude desktop or Claude Code start it, and it opens the same `~/.stolk/stolk.db` as the app, so when Ivan tells Claude "pásalo a Stölk", the people, conversations and tasks land here. It goes through the same routes as the HTTP API (in process, no token or port needed).
