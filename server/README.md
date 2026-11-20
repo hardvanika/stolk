@@ -91,7 +91,7 @@ While the Google project is in "Testing", Google expires the sign-in after 7 day
 
 ## Preguntar
 
-`POST /ask {question}` sends the question to Claude together with a compact JSON copy of your data: contacts (no phone numbers), the last year of history, relations, events, projects, bookings, and the next 90 days of Google Calendar. It returns `{answer, cites, draft, used, model}`. When you ask it to write to someone, `draft` is `{cid, text}`, and the app shows it next to the send buttons. Nothing is ever sent automatically.
+`POST /ask {question}` sends the question to Claude together with a compact JSON copy of your data: contacts (no phone numbers), the last year of history, relations, events, projects, bookings, and the next 90 days of Google Calendar. It returns `{answer, offTopic, emotion, cites, draft, used, model}`. Preguntar sticks to Stölk: off-topic asks (code, homework, general knowledge) get a short refusal with `offTopic: true` and `emotion: "angry"`. It allows 6 questions a minute and 200 a day (429 `ask_rate_limited` / `ask_daily_limit`), and answers are capped at 2,500 characters. When you ask it to write to someone, `draft` is `{cid, text}`, and the app shows it next to the send buttons. Nothing is ever sent automatically.
 
 It works as a chat. Send the earlier turns as `history: [{role: "user"|"assistant", text}]` (up to 20) and files as `attachments: [{name, mediaType, data}]` with `data` in base64. Photos (PNG, JPG, WebP, GIF), PDFs and text files (TXT, MD, CSV) are accepted, up to 5 files and 10 MB in total. Anything else gets a 400 with a message in Spanish.
 
