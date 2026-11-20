@@ -22,9 +22,12 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['pa
   await page.clock.setFixedTime(new Date('2026-11-19T18:30:00'));
   await page.goto('file://' + path.join(here, '..', 'renderer', 'index.html'));
   await page.waitForSelector('#askInput');
+  check(await page.evaluate(() => document.querySelectorAll('#logoO .m-eye').length === 2 && !document.querySelector('.logo animateTransform')), `${label}: la ö de la barra es la mascota (dos ojos, sin giro constante)`);
+  await page.evaluate(() => { window.__plays = []; const p = window.stolkO.play; window.stolkO.play = (n) => { window.__plays.push(n); return p(n); }; });
   await page.fill('#askInput', '¿A quién conocí en Tech & Tapas #3?');
   await page.click('#askForm button[type=submit]');
   await page.waitForSelector('.answer');
+  check((await page.evaluate(() => window.__plays)).join(',') === 'hop,happy', `${label}: la ö salta al preguntar y pone la emoción de Claude`);
   check((await page.textContent('.answer')).includes('Lucía'), `${label}: Preguntar muestra la respuesta del servidor`);
   check((await page.inputValue('#askInput')) === '', `${label}: la caja de Preguntar se vacía al enviar`);
   await page.fill('#askInput', 'escribe a Jorge para el deck');

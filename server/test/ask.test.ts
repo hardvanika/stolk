@@ -74,6 +74,18 @@ test('sends the question with Ivan\'s data, structured output and fallbacks', as
   assert.match(lastParams.messages[0].content.at(-1).text, /^today: 2026-11-19/);
 });
 
+test('passes Claude\'s emotion for the ö mascot; neutral, missing or unknown become null', async () => {
+  reply = () => message(JSON.stringify({ answer: 'De nada.', cites: [], draft: null, emotion: 'thanks' }));
+  assert.equal((await ask('¡Gracias!')).body.emotion, 'thanks');
+  assert.deepEqual(lastParams.output_config.format.schema.properties.emotion.enum,
+    ['neutral', 'happy', 'thanks', 'eyeroll', 'wink', 'surprised', 'sad', 'celebrate']);
+  assert.ok(lastParams.output_config.format.schema.required.includes('emotion'));
+  for (const emotion of ['neutral', undefined, 'angry', 'furious']) {
+    reply = () => message(JSON.stringify({ answer: 'x', cites: [], draft: null, emotion }));
+    assert.equal((await ask('¿Color favorito de Jorge?')).body.emotion, null, `emotion ${emotion}`);
+  }
+});
+
 test('returns a draft for "escribe a…" and drops drafts for unknown people', async () => {
   reply = () => message(JSON.stringify({
     answer: 'Te he preparado un mensaje para Jorge.',
