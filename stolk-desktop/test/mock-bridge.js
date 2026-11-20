@@ -63,6 +63,7 @@
     setSettings: async () => ({ ok: true, shortcutActive: false }),
     setPanel: async (on) => on,
     capture: async () => {},
+    allowCapture: async () => ({ ok: true }),
     installGnomeShortcut: async () => ({ binding: '<Control><Shift>s' }),
     openExternal: async (u) => { window.STOLK_CALLS.push('open ' + u); },
     onCapture: (fn) => { captureCb = fn; },
