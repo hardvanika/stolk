@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld('stolk', {
   settings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   capture: () => ipcRenderer.invoke('capture:start'),
-  allowCapture: () => ipcRenderer.invoke('capture:allow'),
   setPanel: (on) => ipcRenderer.invoke('window:panel', on),
   installGnomeShortcut: () => ipcRenderer.invoke('shortcut:gnome'),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),

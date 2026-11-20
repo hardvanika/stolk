@@ -11,7 +11,7 @@ import { createStore } from './src/store.mjs';
 import { makeClient, parseContact } from './src/claude.mjs';
 import { installGnomeShortcut, toGnomeBinding } from './src/shortcut.mjs';
 import { installDesktopEntry } from './src/desktop-entry.mjs';
-import { portalScreenshot, displayRegion } from './src/portal-screenshot.mjs';
+import { portalScreenshot } from './src/portal-screenshot.mjs';
 import { createLauncherBadge } from './src/launcher-badge.mjs';
 import updaterPkg from 'electron-updater';
 const { autoUpdater } = updaterPkg;
@@ -219,47 +219,47 @@ function registerShortcut() {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-// On Wayland, the screenshot portal (non-interactive) avoids GNOME's "Share screen" dialog on every capture.
-// It needs a one-time "Allow Stölk to take screenshots?" grant, and GNOME only shows that question while
-// Stölk is the focused app, never from the shortcut over another app: allowPortalCapture asks from Ajustes.
-// desktopCapturer stays as the fallback (X11, a desktop without the portal, or no grant yet).
+// X11 (or a desktop without the screenshot portal): grab the screen, then Stölk's own overlay picks the area.
 async function grabScreen(display) {
-  if (isWayland()) {
-    try {
-      const img = nativeImage.createFromBuffer(await portalScreenshot());
-      if (!settings.portalOk) saveSettings({ portalOk: true });
-      if (!img.isEmpty()) {
-        const { width, height } = img.getSize();
-        const all = screen.getAllDisplays();
-        return all.length > 1 ? img.crop(displayRegion(all, display, width, height)) : img;
-      }
-    } catch (err) {
-      if (settings.portalOk) saveSettings({ portalOk: false });
-      console.error(err.message);
-      try { fs.appendFileSync(path.join(app.getPath('userData'), 'stolk.log'), `${new Date().toISOString()} ${err.message}\n`); } catch {}
-    }
-  }
   const sources = await desktopCapturer.getSources({
     types: ['screen'],
     thumbnailSize: { width: Math.round(display.size.width * display.scaleFactor), height: Math.round(display.size.height * display.scaleFactor) },
   });
   const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
-  if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla. En Wayland, acepta el permiso de captura de GNOME.');
+  if (!src || src.thumbnail.isEmpty()) throw new Error('No se pudo capturar la pantalla.');
   return src.thumbnail;
 }
+async function pickWithOverlay() {
+  const wasVisible = win.isVisible();
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  if (wasVisible) { win.hide(); await wait(250); } // keep Stölk itself out of the shot
+  const shot = await grabScreen(display);
+  const rect = await pickArea(display, shot);
+  if (!rect) return null;
+  const size = shot.getSize();
+  return shot.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
+}
+// Wayland: GNOME's own screenshot UI picks the area in one step and hands back only that part.
+async function pickWithPortal() {
+  const png = await portalScreenshot({ interactive: true });
+  return png ? nativeImage.createFromBuffer(png) : null;
+}
+function logError(err) {
+  console.error(err.message);
+  try { fs.appendFileSync(path.join(app.getPath('userData'), 'stolk.log'), `${new Date().toISOString()} ${err.message}\n`); } catch {}
+}
+
 async function startCapture() {
   if (capturing || !win) return;
   capturing = true;
-  const wasVisible = win.isVisible();
   try {
-    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-    if (wasVisible) { win.hide(); await wait(250); } // keep Stölk itself out of the shot
-    const shot = await grabScreen(display);
-    const rect = await pickArea(display, shot);
+    let crop;
+    if (isWayland()) {
+      try { crop = await pickWithPortal(); if (!crop) return; } // null: Ivan pressed Esc
+      catch (err) { logError(err); crop = await pickWithOverlay(); }
+    } else crop = await pickWithOverlay();
     showWindow();
-    if (!rect) return;
-    const size = shot.getSize();
-    let crop = shot.crop({ x: Math.round(rect.x * size.width), y: Math.round(rect.y * size.height), width: Math.max(1, Math.round(rect.w * size.width)), height: Math.max(1, Math.round(rect.h * size.height)) });
+    if (!crop || crop.isEmpty()) return;
     if (crop.getSize().width > 1600) crop = crop.resize({ width: 1600 });
     const image = crop.toDataURL();
     win.webContents.send('capture:result', { status: 'reading', image });
@@ -275,15 +275,6 @@ async function startCapture() {
   } finally {
     capturing = false;
   }
-}
-
-// Run while the Stölk window has focus, so GNOME can ask once; the test shot itself is thrown away.
-async function allowPortalCapture() {
-  showWindow();
-  win.focus();
-  await wait(300);
-  try { await portalScreenshot(); saveSettings({ portalOk: true }); return { ok: true }; }
-  catch (err) { saveSettings({ portalOk: false }); return { ok: false, message: err.message }; }
 }
 
 // Full-screen overlay showing the frozen screenshot; Ivan drags a box around the person. Resolves to fractions (0..1) or null.
@@ -311,7 +302,7 @@ ipcMain.handle('api:call', async (_e, method, route, body) => {
   if (!/^\/[\w\-/?=&%.:,+@]*$/.test(route) || !['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { status: 400, body: { error: { code: 'bad_call', message: 'Llamada no válida' } } };
   return serverCall(method, route, body);
 });
-ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), googleReady: !!(bundledGoogleClient() || envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland(), portalOk: !!settings.portalOk }));
+ipcMain.handle('settings:get', () => ({ shortcut: settings.shortcut, panel: !!settings.panel, hasKey: !!apiKey(), googleReady: !!(bundledGoogleClient() || envFileValue('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID), shortcutActive: shortcutWorks(), gnome: !!settings.gnome, wayland: isWayland() }));
 ipcMain.handle('settings:set', async (_e, patch) => {
   const accel = typeof patch.shortcut === 'string' ? patch.shortcut.trim() : '';
   if (accel) {
@@ -329,7 +320,6 @@ ipcMain.handle('badge:set', (_e, n) => { n = Math.max(0, Math.floor(Number(n) ||
 app.on('will-quit', () => dockBadge?.stop());
 ipcMain.handle('window:panel', (_e, on) => { setPanel(!!on); return !!on; });
 ipcMain.handle('capture:start', () => startCapture());
-ipcMain.handle('capture:allow', () => allowPortalCapture());
 ipcMain.handle('shortcut:gnome', async () => {
   const error = await syncGnome(settings.shortcut); // later shortcut changes update this GNOME binding too
   if (error) throw new Error(error);
