@@ -1708,13 +1708,17 @@ window.stolkO = (() => {
   }
   let syncTimer = null;
   const startSync = () => { if (syncTimer) return; syncNow(false); syncTimer = setInterval(() => syncNow(false), 15 * 60 * 1000); };
-  // Coming back from Claude or the Google sign-in: pick up what changed meanwhile (Claude can write through MCP).
+  // Coming back to the window: pick up what changed meanwhile (Claude can write through MCP, imports go straight
+  // to the database). Stölk often stays open for days, so a new day reloads the page and "hoy" moves on.
+  const busy = () => document.activeElement?.matches?.('input, textarea, select') || !!modalRoot.firstChild;
+  const newDay = () => iso(new Date()) !== iso(TODAY);
   window.addEventListener('focus', () => {
     if (!state.ready) return;
-    const typing = document.activeElement?.matches?.('input, textarea, select');
-    const modalOpen = !!modalRoot.firstChild;
-    load('connections', 'contacts', 'interactions', 'projects', 'claudeMcp').then(() => { if (!typing && !modalOpen) render(); }).catch(() => {});
+    if (newDay() && !busy()) { location.reload(); return; }
+    const wasBusy = busy();
+    load('connections', 'contacts', 'interactions', 'projects', 'events', 'today', 'calendar', 'claudeMcp').then(() => { if (!wasBusy) render(); }).catch(() => {});
   });
+  setInterval(() => { if (state.ready && newDay() && !busy() && !state.askLoading) location.reload(); }, 60 * 1000);
   if (await Api.ready()) start();
   else {
     main.innerHTML = '<p class="muted">Arrancando…</p>';
