@@ -154,7 +154,7 @@ export class Syncer {
   /** Make sure every upcoming, active Stölk event with a time has exactly one up-to-date block. */
   async syncBlocks(cal: CalcomClient): Promise<number> {
     const today = todayIso(this.now());
-    const rows = this.db.prepare(`SELECT * FROM events WHERE date >= ? AND
+    const rows = this.db.prepare(`SELECT * FROM events WHERE COALESCE(end_date, date) >= ? AND
       ((status <> 'cancelado' AND start <> '' AND block = 1 AND cal_block_synced = 0)
        OR ((status = 'cancelado' OR block = 0) AND cal_block_uid IS NOT NULL))`).all(today) as any[];
     let n = 0;
@@ -174,7 +174,11 @@ export class Syncer {
       }
       if (ev.status !== 'cancelado' && ev.start && ev.block) {
         const o = await this.ownerAndBlockType(cal);
-        const minutes = blockLength(ev.end ? minutesBetween(ev.start, ev.end) : 60);
+        // A multi-day event blocks from its start to its end on the last day (capped at the longest block length).
+        const days = ev.end_date && ev.end_date > ev.date ? Math.round((Date.parse(ev.end_date) - Date.parse(ev.date)) / 86400000) : 0;
+        const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+        const span = days ? days * 1440 + (ev.end ? mins(ev.end) - mins(ev.start) : 0) : 0;
+        const minutes = blockLength(span > 0 ? span : ev.end ? minutesBetween(ev.start, ev.end) : 60);
         const uid = await cal.createBlock({
           eventTypeId: o.blockTypeId, startUtc: toUtc(ev.date, ev.start), minutes, owner: o, stolkEventId: ev.id, title: ev.title,
         });

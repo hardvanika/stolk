@@ -182,7 +182,7 @@ export function snapshot(db: DB, now: Date) {
     .map((i) => ({ cid: i.cid, date: i.date, ch: i.ch, text: i.text, follow: i.follow ?? undefined, eventId: i.event_id ?? undefined }));
   const relations = (db.prepare('SELECT a, b, kind, date FROM relations').all() as any[]).map((r) => ({ a: r.a, b: r.b, kind: r.kind, date: r.date ?? undefined }));
   const events = (db.prepare('SELECT * FROM events ORDER BY date').all() as any[]).map((e) => ({
-    id: e.id, title: e.title, date: e.date, start: e.start || undefined, end: e.end || undefined, place: e.place || undefined,
+    id: e.id, title: e.title, date: e.date, endDate: e.end_date || undefined, start: e.start || undefined, end: e.end || undefined, place: e.place || undefined,
     url: e.url || undefined, status: e.status, desc: e.desc || undefined,
     guests: (db.prepare('SELECT cid, st FROM event_guests WHERE event_id = ?').all(e.id) as any[]).map((g) => ({ cid: g.cid, st: g.st })),
   }));

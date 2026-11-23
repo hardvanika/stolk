@@ -11,9 +11,10 @@ window.STOLK_SAMPLE = {
       { id: 8, name: 'Tomás Vidal', role: 'Fundador', company: 'Grano', email: 'tomas@grano.example', phone: '+34 600 112 208', tags: ['startup', 'agro'], notes: 'Agtech. Le presenté a Jorge en septiembre.' },
       { id: 9, name: 'Elena Prieto', role: 'Head of Talent', company: 'Nubia', email: 'elena@nubia.example', phone: '+34 600 112 209', linkedin: 'linkedin.com/in/elenaprieto', tags: ['empleo'], notes: 'Contrata perfiles junior de IA.' },
     ],
+    calTags: [{ id: 1, name: 'Trabajo', color: '#3B6FD4', pos: 0 }, { id: 2, name: 'Networking', color: '#E0703A', pos: 1 }, { id: 3, name: 'Personal', color: '#3E9B5C', pos: 2 }],
     events: [
       { id: 101, title: 'Tech & Tapas #4', date: '2026-12-03', start: '19:00', end: '22:00', place: 'Impact Lab, Madrid', url: 'https://lu.ma/tech-tapas-4', status: 'planeado', guests: [{ cid: 5, st: 'confirmado' }, { cid: 4, st: 'confirmado' }, { cid: 6, st: 'invitado' }, { cid: 1, st: 'invitado' }, { cid: 7, st: 'invitado' }], desc: 'Cuarta edición. 60 plazas. Busco patrocinio de bebidas.' },
-      { id: 102, title: 'Demo day IA UC3M', date: '2026-11-27', start: '17:00', end: '20:00', place: 'Campus Leganés, aula 1.0.4', status: 'planeado', guests: [{ cid: 3, st: 'confirmado' }, { cid: 6, st: 'confirmado' }, { cid: 9, st: 'invitado' }, { cid: 2, st: 'invitado' }], desc: '6 proyectos de estudiantes, jurado de 3.' },
+      { id: 102, title: 'Demo day IA UC3M', date: '2026-11-27', tagId: 1, start: '17:00', end: '20:00', place: 'Campus Leganés, aula 1.0.4', status: 'planeado', guests: [{ cid: 3, st: 'confirmado' }, { cid: 6, st: 'confirmado' }, { cid: 9, st: 'invitado' }, { cid: 2, st: 'invitado' }], desc: '6 proyectos de estudiantes, jurado de 3.' },
       { id: 103, title: 'Tech & Tapas #3', date: '2026-10-08', start: '19:00', end: '22:00', place: 'Impact Lab, Madrid', status: 'hecho', guests: [{ cid: 1, st: 'asistió' }, { cid: 2, st: 'asistió' }, { cid: 8, st: 'asistió' }, { cid: 5, st: 'asistió' }], desc: '48 asistentes.' },
     ],
     interactions: [

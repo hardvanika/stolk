@@ -5,6 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline'">
 <title>Stölk</title>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="calendar.css">
 </head>
 <body>
 <style>
@@ -129,7 +130,7 @@ h3 { font: 600 14.5px/1.3 var(--font-ui); margin: 0; }
 .datebox .m { font: 500 11px var(--font-ui); color: var(--muted); }
 
 .tag { display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; padding: 1px 8px; font: 500 12px/1.6 var(--font-ui); color: var(--ink); background: var(--surface-3); white-space: nowrap; }
-.tag.event { background: var(--ink); color: var(--bg); }
+.tag.event { background: var(--ev, var(--ink)); color: var(--ev-ink, var(--bg)); }
 .tag.plain { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .tag.cal { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .tag.cal::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
@@ -262,9 +263,13 @@ details.more > summary::-webkit-details-marker { display: none; }
 .sw.bk { background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .sw.bl { background: repeating-linear-gradient(-45deg, var(--muted) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .sw.fu { border: 1px dashed var(--muted); }
-.month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.month { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.month .dow-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .month .dow { font: 500 12px var(--font-ui); color: var(--muted); padding: 8px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.month .day { min-height: 108px; padding: 6px 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* One grid per week: day cells fill every row behind; bars and chips sit in lanes on top (see calendar.js). */
+.month .wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; min-height: 108px; padding-bottom: 6px; position: relative; border-bottom: 1px solid var(--line); }
+.month .wk:last-child { border-bottom: 0; }
+.month .day { grid-row: 1 / -1; padding: 4px 6px; border-right: 1px solid var(--line); margin-bottom: -6px; min-width: 0; }
 .month .dow:nth-child(7n), .month .day:nth-child(7n) { border-right: 0; }
 .month .day { cursor: pointer; }
 .month .day:hover { background: var(--surface-2); }
@@ -282,7 +287,7 @@ details.more > summary::-webkit-details-marker { display: none; }
 .month .num { font: 500 12.5px var(--font-ui); padding: 1px 6px; align-self: flex-start; border-radius: 6px; font-variant-numeric: tabular-nums; }
 .month .today .num { background: var(--ink); color: var(--bg); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 3px 6px; font-size: 12px; line-height: 1.3; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); background: var(--surface-3); }
-.item.event { background: var(--ink); color: var(--bg); }
+.item.event { background: var(--ev, var(--ink)); color: var(--ev-ink, var(--bg)); }
 .item.cal { background: var(--surface-3); }
 .item.block { background: repeating-linear-gradient(-45deg, var(--surface-3) 0 5px, var(--surface-2) 5px 10px); color: var(--muted); }
 .item.follow { background: transparent; color: var(--muted); border: 1px dashed var(--line-strong); }
@@ -392,8 +397,8 @@ details.more > summary::-webkit-details-marker { display: none; }
   main { max-width: none; padding-right: max(40px, env(safe-area-inset-right, 0px), calc(100% - 1140px)); overflow-y: auto; overscroll-behavior: contain; }
   main.fit { display: flex; flex-direction: column; padding-block: 28px 24px; overflow: hidden; }
   main.fit .view-head { margin-bottom: 14px; }
-  main.fit .month { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); }
-  main.fit .month .day { min-height: 0; overflow: hidden; }
+  main.fit .month { flex: 1; min-height: 0; }
+  main.fit .month .wk { flex: 1 1 0; min-height: 0; overflow: hidden; }
   main.fit .chat { flex: 1; height: auto; min-height: 0; width: 100%; }
   main.fit .home-split { flex: 1; height: auto; min-height: 0; }
 }
@@ -429,6 +434,7 @@ details.more > summary::-webkit-details-marker { display: none; }
 
 <script src="api.js"></script>
 <script src="mascot.js"></script>
+<script src="calendar.js"></script>
 <script>
 (function(){const modes=['claro','oscuro','sistema'];let i=0;try{i=Math.max(0,modes.indexOf(localStorage.getItem('stolk-theme2')||'claro'))}catch(e){}
 function apply(){const m=modes[i];if(m==='sistema')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m==='oscuro'?'dark':'light');const b=document.getElementById('themeBtn');if(b)b.textContent='Tema: '+m;try{localStorage.setItem('stolk-theme2',m)}catch(e){}}
@@ -499,9 +505,9 @@ window.stolkO = (() => {
     if (want('events')) jobs.push(Api.get('/events').then((v) => { state.events = v; }));
     if (want('projects')) jobs.push(Api.get('/projects').then((v) => { state.projects = v; }));
     if (want('today')) jobs.push(Api.get('/today').then((v) => { state.today = v; }));
+    if (want('calendar') || want('tags')) jobs.push(Api.get('/cal-tags').then((v) => { state.tags = v; }, () => { state.tags = []; }));
     if (want('calendar')) {
-      const m = state.calMonth;
-      const from = iso(addDays(new Date(m.getFullYear(), m.getMonth(), 1), -7)), to = iso(addDays(new Date(m.getFullYear(), m.getMonth() + 1, 0), 14));
+      const { from, to } = Cal.range();
       jobs.push(Api.get(`/calendar?from=${from}&to=${to}`).then((v) => { state.bookings = v.bookings || []; state.gcal = v.gcal || []; /* events come complete from /events; /calendar's are a slim copy */ }));
     }
     if (want('settings')) jobs.push(Api.get('/settings').then((v) => { state.blockEvents = !!v.blockEvents; state.claudeOn = !!v.claudeOn; state.enrichOn = !!v.enrichOn; state.claudeModel = v.claudeModel || 'claude-opus-5-5'; if (v.calTypes?.length) CAL_TYPES.splice(0, CAL_TYPES.length, ...v.calTypes); }));
@@ -570,11 +576,13 @@ window.stolkO = (() => {
   function syncBadge() { const n = badgeCount(); if (n !== lastBadge && window.stolk?.setBadge) { lastBadge = n; window.stolk.setBadge(n).catch(() => {}); } }
   function render() {
     if (!state.ready) return;
+    if (Cal.deferRender()) return; // never rebuild the calendar under a drag
     renderNav();
     syncBadge();
     const v = current();
     main.classList.toggle('fit', v === 'calendario' || v === 'preguntar');
-    main.innerHTML = ({ contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: viewCalendar, preguntar: viewHome, integraciones: viewCal })[v]();
+    main.innerHTML = ({ contactos: viewContacts, proyectos: viewProjects, eventos: viewEvents, calendario: () => Cal.view(), preguntar: viewHome, integraciones: viewCal })[v]();
+    Cal.afterRender();
     if (v === 'preguntar') document.getElementById('askInput')?.focus({ preventScroll: true });
     if (v === 'preguntar') {
       const input = document.getElementById('askInput');
@@ -615,8 +623,8 @@ window.stolkO = (() => {
         <div><h1 class="sr-only">Hoy</h1></div>
       </div>
       <ul class="list panel today-list">${items.map((it) => `
-        <li class="row today-row ${it.end <= now ? 'past' : ''}">
-          <div class="hour"><div>${it.start}</div><div class="muted">${it.end}</div></div>
+        <li class="row today-row ${it.end && it.end <= now ? 'past' : ''}">
+          <div class="hour"><div>${it.start || 'Todo el día'}</div><div class="muted">${it.end}</div></div>
           <div style="min-width:0" ${it.action ? `class="clickable-area" data-action="${it.action}" data-id="${it.id}"` : ''}><div class="title">${esc(it.title)}</div>${it.sub ? `<div class="meta">${esc(it.sub)}</div>` : ''}</div>
           <div class="today-side">${SRC[it.src]}${it.c ? chatButtons(it.c, true) : ''}</div>
         </li>`).join('') || '<li class="empty">Hoy no tienes reuniones.</li>'}</ul>`;
@@ -897,59 +905,7 @@ window.stolkO = (() => {
       <div class="event-cards">${done.map(eventCard).join('')}</div>`;
   }
 
-  // ---------- Calendario ----------
-  function itemsOn(dateStr) {
-    const out = [];
-    for (const e of state.events) if (e.date === dateStr) out.push({ cls: 'event', label: `${e.start} ${e.title}`, action: 'open-event', id: e.id });
-    for (const e of state.events) if (e.date === dateStr && e.status === 'planeado' && state.calConnected && state.blockEvents) out.push({ cls: 'block', label: 'Bloqueado en Cal.com', action: 'open-event', id: e.id });
-    for (const b of state.bookings) if (b.date === dateStr) out.push({ cls: 'cal', label: `${b.start} ${b.type} · ${bookingName(b).split(' ')[0]}`, action: byId(b.cid) ? 'open-contact' : 'open-day', id: byId(b.cid) ? b.cid : dateStr });
-    if (state.gcalConnected) for (const g of state.gcal) if (g.date === dateStr) out.push({ cls: 'gcal', label: `${g.start} ${g.title}`, action: 'gcal', id: g.id });
-    for (const i of state.interactions) if (i.follow === dateStr) out.push({ cls: 'follow', label: `Seguir: ${(byId(i.cid)?.name || 'contacto').split(' ')[0]}`, action: 'open-contact', id: i.cid });
-    const t = (x) => /^\d\d:\d\d/.test(x.label) ? x.label.slice(0, 5) : x.cls === 'block' ? x.label : '99';
-    return out.sort((a, b) => t(a).localeCompare(t(b)));
-  }
-  function viewCalendar() {
-    const m = state.calMonth;
-    const first = new Date(m.getFullYear(), m.getMonth(), 1);
-    const start = addDays(first, -((first.getDay() + 6) % 7));
-    const cells = [];
-    for (let i = 0; i < 42; i++) {
-      const d = addDays(start, i);
-      if (i >= 35 && d.getMonth() !== m.getMonth()) break;
-      const ds = iso(d);
-      cells.push(`<div class="day ${d.getMonth() !== m.getMonth() ? 'out' : ''} ${ds === iso(TODAY) ? 'today' : ''}" data-action="open-day" data-id="${ds}" role="button" tabindex="0" aria-label="Ver el ${esc(fmtLong(ds))}">
-        <span class="num">${d.getDate()}</span>
-        ${itemsOn(ds).map((it) => `<button class="item ${it.cls}" data-action="${it.action}" data-id="${it.id}" title="${esc(it.label)}">${esc(it.label)}</button>`).join('')}
-      </div>`);
-    }
-    // Agenda list for phones.
-    const days = [];
-    for (let d = new Date(first); d.getMonth() === m.getMonth(); d = addDays(d, 1)) {
-      const its = itemsOn(iso(d));
-      if (its.length) days.push(`<li class="row" style="align-items:start"><div class="datebox"><div class="d">${d.getDate()}</div><div class="m">${DOW[(d.getDay() + 6) % 7]}</div></div>
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0">${its.map((it) => `<button class="item ${it.cls}" data-action="${it.action}" data-id="${it.id}">${esc(it.label)}</button>`).join('')}</div><span></span></li>`);
-    }
-    return `
-      <div class="view-head">
-        <div><h1>${MONTHS[m.getMonth()][0].toUpperCase() + MONTHS[m.getMonth()].slice(1)} ${m.getFullYear()}</h1></div>
-        <div class="cal-toolbar">
-          <button class="btn small" data-action="month" data-id="-1" aria-label="Mes anterior">←</button>
-          <button class="btn small" data-action="month" data-id="0">Hoy</button>
-          <button class="btn small" data-action="month" data-id="1" aria-label="Mes siguiente">→</button>
-          <button class="btn primary small" data-action="new-event">Nuevo evento</button>
-        </div>
-      </div>
-      <div class="cal-legend" style="margin-bottom:12px">
-        <span><i class="sw ev"></i>Mis eventos</span>
-        <span><i class="sw bk"></i>Reservas de Cal.com</span>
-        <span><i class="sw bl"></i>Bloqueado en Cal.com</span>
-        <span><i class="sw gc"></i>Google Calendar</span>
-        <span><i class="sw fu"></i>Seguimientos</span>
-        ${protoFlag}
-      </div>
-      <div class="month" role="grid">${DOW.map((d) => `<div class="dow">${d}</div>`).join('')}${cells.join('')}</div>
-      <ul class="list panel agenda">${days.join('') || '<li class="empty">Nada este mes.</li>'}</ul>`;
-  }
+  // ---------- Calendario: see calendar.js ----------
 
   // ---------- Preguntar: a chat with Claude through the local server (/ask) ----------
   const ASK_MAX_FILES = 5, ASK_MAX_BYTES = 10 * 1024 * 1024;
@@ -1237,7 +1193,7 @@ window.stolkO = (() => {
   const closeModal = () => { modalRoot.innerHTML = ''; };
   const openExternal = (url) => { if (window.stolk?.openExternal) window.stolk.openExternal(url); else window.open(url, '_blank', 'noopener'); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-  document.addEventListener('keydown', (e) => { const d = e.target.closest?.('.month .day[data-action="open-day"]'); if (d && e.target === d && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); modalDay(d.dataset.id); } });
+  document.addEventListener('keydown', (e) => { const d = e.target.closest?.('.month .day[data-action="open-day"]'); if (d && e.target === d && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); Cal.modalDay(d.dataset.id); } });
 
   function toast(msg) {
     const root = document.getElementById('toastRoot');
@@ -1315,77 +1271,36 @@ window.stolkO = (() => {
     list.addEventListener('mousedown', (e) => { const li = e.target.closest('li[data-cid]'); if (li) { e.preventDefault(); add(Number(li.dataset.cid)); } });
     chips.addEventListener('click', (e) => { const b = e.target.closest('[data-remove]'); if (b) { chosen.splice(chosen.indexOf(Number(b.dataset.remove)), 1); drawChips(); input.focus(); } });
   }
-  // Click a day in Calendario: everything on that day, untruncated, with what you can do next.
-  function dayEntries(ds) {
-    const out = [];
-    for (const e of state.events) if (e.date === ds) out.push({ start: e.start, end: e.end, title: e.title, meta: [e.place, e.status === 'planeado' && state.calConnected && state.blockEvents ? 'Bloqueado en Cal.com' : ''].filter(Boolean).join(' · '), tag: '<span class="tag event">Mi evento</span>', btn: `<button class="btn small" data-action="open-event" data-id="${e.id}">Ver</button>` });
-    for (const b of state.bookings) if (b.date === ds) {
-      const c = byId(b.cid);
-      out.push({ start: b.start, end: b.end, title: c ? `${b.type} con ${c.name}` : b.type, meta: c ? [c.role, c.company].filter(Boolean).join(' · ') : [b.attendeeName, b.attendeeEmail].filter(Boolean).join(' · '), tag: '<span class="tag cal">Cal.com</span>',
-        btn: c ? `<button class="btn small" data-action="open-contact" data-id="${c.id}">Ver persona</button>` : (b.attendeeName || b.attendeeEmail) ? `<button class="btn small" data-action="save-attendee" data-id="${b.id}">Guardar persona</button>` : '' });
-    }
-    if (state.gcalConnected) for (const g of state.gcal) if (g.date === ds) out.push({ start: g.start, end: g.end, title: g.title, meta: g.place || '', tag: '<span class="tag plain">Google</span>', btn: '' });
-    for (const i of state.interactions) if (i.follow === ds) { const c = byId(i.cid); out.push({ start: '', end: '', title: `Seguir con ${c?.name || 'contacto'}`, meta: i.text || '', tag: '<span class="tag plain">Seguimiento</span>', btn: c ? `<button class="btn small" data-action="open-contact" data-id="${c.id}">Ver persona</button>` : '' }); }
-    return out.sort((a, b) => (a.start || '99').localeCompare(b.start || '99'));
-  }
-  function modalDay(ds) {
-    const items = dayEntries(ds);
-    const title = fmtLong(ds);
-    openModal(`
-      <h2>${esc(title[0].toUpperCase() + title.slice(1))}</h2>
-      ${items.length ? `<ul class="day-list">${items.map((x) => `<li>
-          <div class="t">${esc(x.start || 'Todo el día')}${x.end ? `<span>${esc(x.end)}</span>` : ''}</div>
-          <div class="what"><div class="title">${esc(x.title)}</div>${x.meta ? `<div class="meta">${esc(x.meta)}</div>` : ''}<div class="tags" style="margin-top:6px">${x.tag}</div></div>
-          <div>${x.btn}</div></li>`).join('')}</ul>` : '<p class="muted" style="margin:0">Nada este día.</p>'}
-      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button><button type="button" class="btn primary" data-action="new-event" data-id="${ds}">Nuevo evento este día</button></div>`, () => {});
-  }
-  function modalEvent(date) {
-    openModal(`
-      <h2>Nuevo evento</h2>
-      <div class="form">
-        <div class="field"><label for="eTitle">Nombre</label><input id="eTitle" name="title" required placeholder="Tech & Tapas #5"></div>
-        <div class="form-row">
-          <div class="field"><label for="eDate">Día</label><input id="eDate" type="date" name="date" value="${date || iso(addDays(TODAY, 14))}" required></div>
-          <div class="field"><label for="ePlace">Lugar</label><input id="ePlace" name="place" placeholder="Impact Lab, Madrid" list="places"><datalist id="places">${[...new Set(state.events.map((e) => e.place))].map((p) => `<option value="${esc(p)}">`).join('')}</datalist></div>
-        </div>
-        <div class="form-row">
-          <div class="field"><label for="eStart">Empieza</label><input id="eStart" type="time" name="start" value="19:00"></div>
-          <div class="field"><label for="eEnd">Acaba</label><input id="eEnd" type="time" name="end" value="21:00"></div>
-        </div>
-        <div class="field"><label for="eUrl">Enlace del evento</label><input id="eUrl" name="url" type="url" placeholder="https://lu.ma/… o https://meetup.com/…"></div>
-        <div class="field"><label for="eGuests">Invitados</label>${peoplePicker('eGuests', 'guests', 'Busca por nombre o empresa')}</div>
-        <label class="toggle"><input type="checkbox" name="block" ${state.calConnected && state.blockEvents ? 'checked' : ''} ${state.calConnected ? '' : 'disabled'}><span>Bloquear esta franja en Cal.com</span></label>
-      </div>
-      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn primary" type="submit">Crear evento</button></div>`,
-    (fd) => {
-      const ev = { title: fd.get('title'), date: fd.get('date'), start: fd.get('start'), end: fd.get('end'), place: fd.get('place') || '', url: fd.get('url') || undefined, status: 'planeado', desc: '', guests: fd.getAll('guests').map((g) => ({ cid: Number(g), st: 'invitado' })), block: !!fd.get('block') };
-      act(async () => { await Api.post('/events', ev); closeModal(); location.hash = '#eventos'; }, ['events', 'today', 'calendar'],
-        ev.block ? `Creado y bloqueado en Cal.com: ${fmt(ev.date)} ${ev.start}–${ev.end}` : 'Evento creado');
-    });
-    wirePicker('eGuests');
-  }
-
   async function modalEventDetail(id) {
     const e = state.events.find((x) => x.id === id);
     if (!e) return;
     let likely = [];
     if (e.status === 'planeado') { try { likely = (await Api.get(`/events/${id}/likely-guests`)).map((x) => ({ c: byId(x.cid), n: x.score, why: x.reasons })).filter((x) => x.c); } catch { likely = []; } }
-    const opts = e.status === 'hecho' ? ['asistió', 'no vino'] : ['invitado', 'confirmado', 'no viene'];
+    // Values are what the server stores; labels read naturally for a planned or a past event.
+    const opts = e.status === 'hecho' ? [['asistió', 'asistió'], ['no vino', 'no vino']] : [['invitado', 'invitado'], ['confirmado', 'confirmado'], ['no vino', 'no viene']];
+    const guestOpts = (st) => (opts.some(([v]) => v === st) ? opts : [...opts, [st, st]]).map(([v, l]) => `<option value="${esc(v)}" ${v === st ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    const tag = Cal.tagOf(e);
+    const when = e.endDate ? `${esc(fmtLong(e.date))}${e.start ? ' ' + e.start : ''} – ${esc(fmtLong(e.endDate))}${e.end ? ' ' + e.end : ''}` : `${esc(fmtLong(e.date))} · ${e.start}–${e.end}`;
     openModal(`
-      <div><div class="eyebrow">${esc(fmtLong(e.date))} · ${e.start}–${e.end}</div><h2 style="font-size:22px;margin-top:4px">${esc(e.title)}</h2><div class="muted">${esc(e.place)}</div>${e.url ? `<a class="ev-link" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.url.replace(/^https?:\/\//, ''))}</a>` : ''}</div>
+      <div><div class="eyebrow">${when}${tag ? ` · <span class="tag event" style="${Cal.evStyle(e)}">${esc(tag.name)}</span>` : ''}</div><h2 style="font-size:22px;margin-top:4px">${esc(e.title)}</h2><div class="muted">${esc(e.place)}</div>${e.url ? `<a class="ev-link" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.url.replace(/^https?:\/\//, ''))}</a>` : ''}</div>
       ${e.status === 'planeado' ? `<div class="cal-sync" style="border:0;padding:0">${state.calConnected && state.blockEvents ? '<span class="led"></span>Franja bloqueada en tu Cal.com' : '<span class="led off"></span>No bloqueado en Cal.com'}</div>` : ''}
-      <ul class="list">${e.guests.map((g) => { const c = byId(g.cid); return `
+      <ul class="list">${e.guests.map((g) => { const c = byId(g.cid); if (!c) return ''; return `
         <li class="row" style="padding-inline:0">
           <div class="avatar">${initials(c.name)}</div>
           <div style="min-width:0"><div class="title">${esc(c.name)}</div><div class="meta">${esc(c.company)}</div></div>
-          <select aria-label="Estado de ${esc(c.name)}" data-guest="${c.id}" class="field" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface)">${opts.map((o) => `<option ${o === g.st ? 'selected' : ''}>${o}</option>`).join('')}</select>
+          <div class="guest-ctl"><select aria-label="Estado de ${esc(c.name)}" data-guest="${c.id}" class="field" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface)">${guestOpts(g.st)}</select>
+          <button type="button" class="guest-x" data-unguest="${c.id}" title="Quitar a ${esc(c.name)} del evento" aria-label="Quitar a ${esc(c.name)} del evento">×</button></div>
         </li>`; }).join('')}</ul>
       ${e.status === 'planeado' ? (() => { const lk = likely.slice(0, 4); return lk.length ? `<div><div class="eyebrow" style="margin-bottom:6px">Probablemente vengan (según tus datos)</div><ul class="list">${lk.map((x) => `
         <li class="row" style="padding-inline:0"><div class="avatar">${initials(x.c.name)}</div>
           <div style="min-width:0"><div class="title">${esc(x.c.name)}</div><div class="meta">${esc(x.why.join(' · '))}</div></div>
           <button type="button" class="btn small" data-action="invite" data-id="${e.id}:${x.c.id}">Invitar</button></li>`).join('')}</ul></div>` : ''; })() : ''}
       <div class="field"><label for="addGuest">Añadir invitado</label><select id="addGuest"><option value="">Elige un contacto…</option>${state.contacts.filter((c) => !e.guests.some((g) => g.cid === c.id)).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
-      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button></div>`, () => {});
+      <div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button><button type="button" class="btn primary" data-action="edit-event" data-id="${e.id}">Editar</button></div>`, () => {});
+    modalRoot.querySelectorAll('[data-unguest]').forEach((b) => b.addEventListener('click', () => {
+      const c = byId(Number(b.dataset.unguest));
+      act(() => Api.del(`/events/${id}/guests/${b.dataset.unguest}`), ['events'], `${c ? c.name.split(' ')[0] : 'Invitado'} quitado del evento`).then((ok) => ok && modalEventDetail(id));
+    }));
     modalRoot.querySelectorAll('[data-guest]').forEach((s) => s.addEventListener('change', () => act(() => Api.put(`/events/${id}/guests/${s.dataset.guest}`, { st: s.value }), ['events'])));
     document.getElementById('addGuest').addEventListener('change', (ev) => { if (!ev.target.value) return; act(async () => { await Api.put(`/events/${id}/guests/${ev.target.value}`, { st: e.status === 'hecho' ? 'asistió' : 'invitado' }); }, ['events']).then((ok) => ok && modalEventDetail(id)); });
   }
@@ -1574,6 +1489,7 @@ window.stolkO = (() => {
     const a = el.dataset.action;
     const id = el.dataset.id;
     if (a === 'close-modal') { if (e.target === el) closeModal(); return; }
+    if (Cal.handle(a, id)) return;
     if (a === 'open-contact' || a === 'select-contact') {
       state.selectedContact = Number(id); state.mobileDetail = true; closeModal();
       if (current() !== 'contactos') location.hash = '#contactos'; else render();
@@ -1583,8 +1499,6 @@ window.stolkO = (() => {
     else if (a === 'log') modalLog(id ? Number(id) : state.selectedContact);
     else if (a === 'edit-contact') modalContact(byId(Number(id)));
     else if (a === 'delete-contact') modalDeleteContact(byId(Number(id)));
-    else if (a === 'new-event') modalEvent(/^\d{4}-\d\d-\d\d$/.test(id || '') ? id : undefined);
-    else if (a === 'open-day') modalDay(id);
     else if (a === 'save-attendee') { const b = state.bookings.find((x) => x.id === Number(id)); if (b) modalContact(null, { name: b.attendeeName || '', email: b.attendeeEmail || '' }); }
     else if (a === 'meet') modalMeet(id ? Number(id) : null);
     else if (a === 'mcp-on') act(() => Api.post(`/integrations/claude/${id}`), ['claudeMcp'], id === 'desktop' ? 'Conectado. Reinicia Claude para verlo.' : 'Conectado a Claude Code');
@@ -1617,7 +1531,6 @@ window.stolkO = (() => {
       act(() => Api.put(`/events/${eid}/guests/${cid}`, { st: 'invitado' }), ['events'], `${byId(cid).name.split(' ')[0]} invitado`).then((ok) => ok && modalEventDetail(eid));
     }
     else if (a === 'new-contact') modalContact(null);
-    else if (a === 'month') { const n = Number(id); state.calMonth = n === 0 ? new Date(TODAY.getFullYear(), TODAY.getMonth(), 1) : new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + n, 1); act(() => {}, ['calendar']); }
     else if (a === 'gcal') { const g = state.gcal.find((x) => x.id === id); toast(`${g.title} · ${g.start}–${g.end}${g.place ? ' · ' + g.place : ''} (Google Calendar)`); }
     else if (a === 'chat-new') { state.chat = []; state.askFiles = []; render(); }
     else if (a === 'theme') { window.stolkTheme.set(id); render(); }
@@ -1688,6 +1601,11 @@ window.stolkO = (() => {
   document.addEventListener('input', (e) => { if (e.target.id !== 'askInput' || state.askLoading) return; stolkO.set(e.target.value.trim() ? 'listen' : 'idle'); stolkO.ping(); });
   document.addEventListener('focusout', (e) => { if (e.target.id === 'askInput' && stolkO.state === 'listen') stolkO.set('idle'); });
   document.addEventListener('click', (e) => { const x = e.target.closest('[data-remove-file]'); if (x) { state.askFiles.splice(Number(x.dataset.removeFile), 1); renderComposerFiles(); } });
+  // Calendario (calendar.js): created here, once everything it uses exists.
+  const Cal = window.StolkCalendar({
+    state, Api, act, render, toast, openModal, closeModal, modalRoot, openEvent: modalEventDetail,
+    iso, parse, addDays, daysBetween, esc, fmt, fmtLong, DOW, MONTHS, byId, bookingName, peoplePicker, wirePicker, TODAY,
+  });
   window.stolk?.onCapture?.((r) => onCapture(r));
   // Auto-update (AppImage only): main downloads the new version; Ivan decides when to restart.
   function showUpdate(version) {
