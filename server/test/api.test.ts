@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Server } from 'node:http';
-import { openDb, type DB } from '../src/db.js';
+import { DatabaseSync } from 'node:sqlite';
+import { openDb, MIGRATIONS, type DB } from '../src/db.js';
 import { EnvFile } from '../src/env.js';
 import { buildRouter } from '../src/app.js';
 import { createApiServer } from '../src/http.js';
@@ -241,4 +242,66 @@ test('ask without a key, unknown routes 404', async () => {
   assert.equal((await api('POST', '/ask', { question: 'hola' })).body.error.code, 'claude_not_connected');
   assert.equal((await api('GET', '/nope')).status, 404);
   assert.equal((await api('PUT', '/contacts')).status, 405);
+});
+
+test('calendar tags: seeded by the migration, create, rename, recolour, delete keeps the events', async () => {
+  const list = (await api('GET', '/cal-tags')).body;
+  assert.deepEqual(list.map((t: any) => t.name), ['Trabajo', 'Networking', 'Personal']);
+  const t = await api('POST', '/cal-tags', { name: ' Familia ', color: '#aa33cc' });
+  assert.equal(t.status, 201);
+  assert.deepEqual([t.body.name, t.body.color, t.body.pos], ['Familia', '#AA33CC', 3]);
+  assert.equal((await api('POST', '/cal-tags', { name: 'x', color: 'purple' })).status, 400);
+  assert.equal((await api('POST', '/cal-tags', { name: '  ', color: '#000000' })).status, 400);
+  assert.equal((await api('PATCH', `/cal-tags/${t.body.id}`, { color: '#112233' })).body.color, '#112233');
+
+  const e = await api('POST', '/events', { title: 'Comida familiar', date: '2027-02-01', start: '14:00', end: '16:00', tagId: t.body.id, block: false });
+  assert.equal(e.body.tagId, t.body.id);
+  assert.equal((await api('POST', '/events', { title: 'x', date: '2027-02-01', tagId: 9999 })).status, 400);
+  assert.equal((await api('PATCH', `/events/${e.body.id}`, { tagId: list[0].id })).body.tagId, list[0].id);
+  assert.equal((await api('PATCH', `/events/${e.body.id}`, { tagId: null })).body.tagId, null);
+  await api('PATCH', `/events/${e.body.id}`, { tagId: t.body.id });
+  assert.equal((await api('DELETE', `/cal-tags/${t.body.id}`)).status, 204);
+  assert.equal((await api('GET', `/events/${e.body.id}`)).body.tagId, null, 'deleting a tag keeps its events, without colour');
+  assert.equal((await api('DELETE', `/cal-tags/${t.body.id}`)).status, 404);
+  await api('DELETE', `/events/${e.body.id}`);
+});
+
+test('events: multi-day spans, drag moves keep the length, and range queries see overlaps', async () => {
+  const e = await api('POST', '/events', { title: 'Web Summit', date: '2027-03-02', endDate: '2027-03-04', start: '09:00', end: '18:00', block: false });
+  assert.equal(e.status, 201);
+  assert.equal(e.body.endDate, '2027-03-04');
+  const id = e.body.id;
+  assert.equal((await api('POST', '/events', { title: 'x', date: '2027-03-02', endDate: '2027-03-01' })).status, 400);
+
+  // Moving the start day alone shifts the end day too (drag in the month view).
+  const moved = (await api('PATCH', `/events/${id}`, { date: '2027-03-09' })).body;
+  assert.deepEqual([moved.date, moved.endDate], ['2027-03-09', '2027-03-11']);
+  // Resizing: a new end day; the same day as the start collapses to a one-day event.
+  assert.equal((await api('PATCH', `/events/${id}`, { endDate: '2027-03-13' })).body.endDate, '2027-03-13');
+  assert.equal((await api('PATCH', `/events/${id}`, { endDate: '2027-03-09' })).body.endDate, null);
+  assert.equal((await api('PATCH', `/events/${id}`, { endDate: '2027-03-08' })).status, 400);
+  // Time drag in the week view.
+  const timed = (await api('PATCH', `/events/${id}`, { date: '2027-03-10', start: '10:30', end: '12:00', endDate: '2027-03-12' })).body;
+  assert.deepEqual([timed.date, timed.endDate, timed.start, timed.end], ['2027-03-10', '2027-03-12', '10:30', '12:00']);
+
+  // A range that only covers the middle of the event still returns it.
+  assert.ok((await api('GET', '/events?from=2027-03-11&to=2027-03-11')).body.some((x: any) => x.id === id));
+  assert.ok((await api('GET', '/calendar?from=2027-03-11&to=2027-03-11')).body.events.some((x: any) => x.id === id && x.endDate === '2027-03-12'));
+  assert.ok(!(await api('GET', '/events?from=2027-03-13&to=2027-03-20')).body.some((x: any) => x.id === id));
+  await api('DELETE', `/events/${id}`);
+});
+
+test('migration 6 keeps the events of an existing database: one-day, no category', () => {
+  const path = join(dir, 'old.db');
+  const old = new DatabaseSync(path);
+  for (const m of MIGRATIONS.slice(0, 5)) old.exec(m);
+  old.exec('PRAGMA user_version = 5');
+  old.prepare("INSERT INTO events (id, title, date, start, end, place) VALUES (7, 'Tech & Tapas', '2026-12-03', '19:00', '21:00', 'Impact Lab')").run();
+  old.close();
+  const up = openDb(path);
+  assert.equal((up.prepare('PRAGMA user_version').get() as any).user_version, MIGRATIONS.length);
+  assert.deepEqual({ ...(up.prepare('SELECT title, date, start, end, place, end_date, tag_id FROM events WHERE id = 7').get() as any) },
+    { title: 'Tech & Tapas', date: '2026-12-03', start: '19:00', end: '21:00', place: 'Impact Lab', end_date: null, tag_id: null });
+  assert.equal((up.prepare('SELECT COUNT(*) AS n FROM cal_tags').get() as any).n, 3);
+  up.close();
 });

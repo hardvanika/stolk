@@ -10,7 +10,7 @@ export interface EventHooks {
 }
 const noHooks: EventHooks = { onEventChanged: async () => {}, onEventDeleted: async () => {} };
 // Changing any of these moves or removes the slot, so the block must be redone.
-const BLOCK_FIELDS = ['date', 'start', 'end', 'status', 'block'];
+const BLOCK_FIELDS = ['date', 'end_date', 'start', 'end', 'status', 'block'];
 
 const GUEST_ST = ['invitado', 'confirmado', 'asistió', 'no vino'] as const;
 const SPEC: Spec = {
@@ -24,19 +24,49 @@ const SPEC: Spec = {
   // Block this event's slot in Cal.com. Defaults to true; only acts when Cal.com is connected and blockEvents is on.
   block: { kind: 'bool' },
   desc: { kind: 'string' },
+  // Last day of an event that spans several days (inclusive). null or the same day as date = a one-day event.
+  endDate: { kind: 'date', nullable: true },
+  // Colour category from /cal-tags. null = no category.
+  tagId: { kind: 'int', nullable: true },
 };
-const FIELDS = ['title', 'date', 'start', 'end', 'place', 'url', 'status', 'desc', 'block'];
+const FIELDS = ['title', 'date', 'end_date', 'start', 'end', 'place', 'url', 'status', 'desc', 'block', 'tag_id'];
 
-/** SQLite stores booleans as 0/1. */
+/** API names to columns; SQLite stores booleans as 0/1. */
 function toRow(v: Record<string, any>) {
   if ('block' in v) v.block = v.block ? 1 : 0;
+  if ('endDate' in v) { v.end_date = v.endDate; delete v.endDate; }
+  if ('tagId' in v) { v.tag_id = v.tagId; delete v.tagId; }
   return v;
+}
+
+/** The day an event ends: its end_date, or its start day for a one-day event. */
+export const lastDay = (r: { date: string; end_date?: string | null }) => r.end_date || r.date;
+
+/** Checks the event as it will be saved: a real category, and an end day that isn't before the start. */
+function checkRow(db: DB, merged: Record<string, any>, v: Record<string, any>) {
+  if (v.tag_id != null && !db.prepare('SELECT 1 FROM cal_tags WHERE id = ?').get(v.tag_id)) throw bad('tagId: no such calendar tag');
+  if (merged.end_date && merged.end_date < merged.date) throw bad('endDate must be on or after date');
+  // A one-day event keeps end_date NULL, so "same day" has a single spelling.
+  if (merged.end_date && merged.end_date === merged.date) v.end_date = null;
+}
+
+const dayMs = 86400000;
+const shiftDate = (d: string, days: number) => new Date(Date.parse(d + 'T00:00:00Z') + days * dayMs).toISOString().slice(0, 10);
+
+/** Events that touch [from, to]: they start on or before to and end on or after from. */
+export function overlapping(from?: string, to?: string) {
+  const where: string[] = [];
+  const args: string[] = [];
+  if (to) { where.push('date <= ?'); args.push(to); }
+  if (from) { where.push('COALESCE(end_date, date) >= ?'); args.push(from); }
+  return { where: where.length ? 'WHERE ' + where.join(' AND ') : '', args };
 }
 
 export function mapEvent(db: DB, r: any) {
   const guests = (db.prepare('SELECT cid, st FROM event_guests WHERE event_id = ? ORDER BY rowid').all(r.id) as any[]).map((g) => ({ cid: g.cid, st: g.st }));
   return {
-    id: r.id, title: r.title, date: r.date, start: r.start, end: r.end, place: r.place,
+    id: r.id, title: r.title, date: r.date, endDate: r.end_date ?? null, start: r.start, end: r.end, place: r.place,
+    tagId: r.tag_id ?? null,
     url: r.url || undefined, status: r.status, desc: r.desc, guests,
     block: !!r.block,
     calBlock: r.cal_block_uid || r.cal_block_error
@@ -121,11 +151,9 @@ export function likelyGuests(db: DB, eventId: number) {
 export function eventRoutes(r: Router, db: DB, hooks: EventHooks = noHooks) {
   r.get('/events', ({ query }) => {
     const from = optDate(query, 'from'), to = optDate(query, 'to');
-    const where: string[] = [];
-    const args: string[] = [];
-    if (from) { where.push('date >= ?'); args.push(from); }
-    if (to) { where.push('date <= ?'); args.push(to); }
-    const rows = db.prepare(`SELECT * FROM events ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY date, start`).all(...args);
+    if (from && to && from > to) throw bad('from must be on or before to');
+    const q = overlapping(from, to);
+    const rows = db.prepare(`SELECT * FROM events ${q.where} ORDER BY date, start`).all(...q.args);
     return rows.map((e) => mapEvent(db, e));
   });
 
@@ -137,6 +165,7 @@ export function eventRoutes(r: Router, db: DB, hooks: EventHooks = noHooks) {
     const { guests: rawGuests, ...rest } = body ?? {};
     const guests = rawGuests !== undefined ? parseGuests(rawGuests) : [];
     const v = toRow(validate(rest, SPEC));
+    checkRow(db, v, v);
     const id = tx(db, () => {
       const keys = FIELDS.filter((k) => k in v);
       const res = db.prepare(`INSERT INTO events (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`).run(...keys.map((k) => v[k]));
@@ -154,8 +183,13 @@ export function eventRoutes(r: Router, db: DB, hooks: EventHooks = noHooks) {
     getEvent(db, id);
     if (body && 'guests' in body) throw bad('Change guests with PUT/DELETE /events/:id/guests/:cid');
     const v = toRow(validate(body, SPEC, true));
-    const keys = FIELDS.filter((k) => k in v);
     const cur = getEvent(db, id);
+    // Moving a multi-day event by its start day alone keeps its length, as dragging it does.
+    if ('date' in v && !('end_date' in v) && cur.end_date) {
+      v.end_date = shiftDate(cur.end_date, Math.round((Date.parse(v.date) - Date.parse(cur.date)) / dayMs));
+    }
+    checkRow(db, { ...cur, ...v }, v);
+    const keys = FIELDS.filter((k) => k in v);
     const moved = BLOCK_FIELDS.some((k) => k in v && v[k] !== cur[k]);
     if (keys.length) {
       db.prepare(`UPDATE events SET ${keys.map((k) => `${k} = ?`).join(', ')}${moved ? ', cal_block_synced = 0' : ''} WHERE id = ?`)

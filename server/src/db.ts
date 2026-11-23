@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 export type DB = DatabaseSync;
 
 // Each entry runs once, in order; PRAGMA user_version records how many have run.
-const MIGRATIONS: string[] = [
+export const MIGRATIONS: string[] = [
   `
   CREATE TABLE contacts (
     id         INTEGER PRIMARY KEY,
@@ -157,6 +157,19 @@ const MIGRATIONS: string[] = [
     searches    INTEGER NOT NULL DEFAULT 0,
     cost_usd    REAL NOT NULL DEFAULT 0
   );
+  `,
+  `
+  -- Calendar like Google Calendar: colour categories, and events that span several days.
+  -- end_date NULL means the event ends the same day it starts, so every existing event stays as it was.
+  CREATE TABLE cal_tags (
+    id    INTEGER PRIMARY KEY,
+    name  TEXT NOT NULL,
+    color TEXT NOT NULL,
+    pos   INTEGER NOT NULL DEFAULT 0
+  );
+  INSERT INTO cal_tags (name, color, pos) VALUES ('Trabajo', '#3B6FD4', 0), ('Networking', '#E0703A', 1), ('Personal', '#3E9B5C', 2);
+  ALTER TABLE events ADD COLUMN end_date TEXT;
+  ALTER TABLE events ADD COLUMN tag_id INTEGER REFERENCES cal_tags(id) ON DELETE SET NULL;
   `,
 ];
 

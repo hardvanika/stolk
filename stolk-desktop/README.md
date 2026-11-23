@@ -35,6 +35,7 @@ cd server && npm ci && npm run build      # API local
 cd ../stolk-desktop && npm ci
 npm test                                  # pruebas unitarias
 node test/live.mjs ../server/dist         # la pantalla contra el servidor real
+node test/calendar-ui.mjs                 # calendario: arrastrar, estirar, colores, «+N más»
 npm start                                 # abre la app (usa ../server/dist)
 ```
 
